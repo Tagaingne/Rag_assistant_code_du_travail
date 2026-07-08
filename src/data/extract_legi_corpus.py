@@ -16,7 +16,53 @@ RAW_LEGI_DIR = Path("data/raw/legi")
 OUTPUT_FILE = Path("data/processed/corpus_legi_clean.json")
 SOURCE_LABEL = "LEGI data.gouv.fr"
 LABOR_CODE_TITLE = "code du travail"
-LABOR_CODE_LEGITEXT_ID = "legitext000006072050"
+ARTICLE_REF_PATTERN = re.compile(r"^([A-Z]+)([0-9]+(?:-[0-9]+)+)$")
+
+
+# The rupture conventionnelle range is checked before the broader licenciement
+# range because L1237-11 to L1237-19 belongs to both numeric intervals.
+THEME_RANGES = [
+    {
+        "theme": "Duree du travail et heures supplementaires",
+        "start": "L3121-1",
+        "end": "L3121-36",
+    },
+    {
+        "theme": "Conges payes",
+        "start": "L3141-1",
+        "end": "L3141-32",
+    },
+    {
+        "theme": "Contrat de travail CDI/CDD",
+        "start": "L1221-1",
+        "end": "L1248-11",
+    },
+    {
+        "theme": "Rupture conventionnelle",
+        "start": "L1237-11",
+        "end": "L1237-19",
+    },
+    {
+        "theme": "Licenciement",
+        "start": "L1231-1",
+        "end": "L1237-20",
+    },
+    {
+        "theme": "Salaire minimum SMIC",
+        "start": "L3231-1",
+        "end": "L3232-9",
+    },
+    {
+        "theme": "Representation du personnel",
+        "start": "L2311-1",
+        "end": "L2316-26",
+    },
+    {
+        "theme": "Harcelement et discrimination",
+        "start": "L1152-1",
+        "end": "L1155-2",
+    },
+]
 
 
 def local_name(tag: str) -> str:
@@ -73,17 +119,57 @@ def stable_id(article_number: str) -> str:
     return f"legi_{safe_article}"
 
 
-def is_labor_code_article(root: ET.Element, xml_path: Path) -> bool:
-    """Check whether an XML article belongs to the French Labor Code."""
-    if local_name(root.tag) != "ARTICLE":
+def parse_article_reference(article_number: str) -> tuple[str, tuple[int, ...]] | None:
+    """Parse an article number into a prefix and comparable numeric tuple."""
+    match = ARTICLE_REF_PATTERN.match(article_number)
+    if not match:
+        return None
+
+    prefix = match.group(1)
+    numbers = tuple(int(part) for part in match.group(2).split("-"))
+    return prefix, numbers
+
+
+def pad_numbers(numbers: tuple[int, ...], length: int) -> tuple[int, ...]:
+    """Pad article numeric parts so lexicographic comparisons are stable."""
+    return numbers + (0,) * (length - len(numbers))
+
+
+def article_in_range(article_number: str, start: str, end: str) -> bool:
+    """Return True when an article number is inside an inclusive range."""
+    parsed_article = parse_article_reference(article_number)
+    parsed_start = parse_article_reference(start)
+    parsed_end = parse_article_reference(end)
+
+    if not parsed_article or not parsed_start or not parsed_end:
         return False
 
-    path_text = xml_path.as_posix().lower()
-    if "code_du_travail" in path_text or LABOR_CODE_LEGITEXT_ID in path_text:
-        return True
+    article_prefix, article_numbers = parsed_article
+    start_prefix, start_numbers = parsed_start
+    end_prefix, end_numbers = parsed_end
 
-    context_text = clean_text(" ".join(root.itertext())).lower()
-    return LABOR_CODE_TITLE in context_text or LABOR_CODE_LEGITEXT_ID in context_text
+    if article_prefix != start_prefix or article_prefix != end_prefix:
+        return False
+
+    max_length = max(len(article_numbers), len(start_numbers), len(end_numbers))
+    article_numbers = pad_numbers(article_numbers, max_length)
+    start_numbers = pad_numbers(start_numbers, max_length)
+    end_numbers = pad_numbers(end_numbers, max_length)
+
+    return start_numbers <= article_numbers <= end_numbers
+
+
+def theme_for_article(article_number: str) -> str | None:
+    """Map an article number to one of the required project themes."""
+    for theme_range in THEME_RANGES:
+        if article_in_range(
+            article_number,
+            theme_range["start"],
+            theme_range["end"],
+        ):
+            return theme_range["theme"]
+
+    return None
 
 
 def extract_title(root: ET.Element, article_number: str) -> str:
@@ -127,11 +213,15 @@ def extract_document(xml_path: Path, extraction_date: str) -> dict | None:
         print(f"[WARN] XML illisible: {xml_path} ({error})")
         return None
 
-    if not is_labor_code_article(root, xml_path):
+    if local_name(root.tag) != "ARTICLE":
         return None
 
     article_number = normalize_article_number(text_of_first(root, "NUM"))
     if not article_number:
+        return None
+
+    theme = theme_for_article(article_number)
+    if theme is None:
         return None
 
     text = extract_article_text(root)
@@ -139,7 +229,6 @@ def extract_document(xml_path: Path, extraction_date: str) -> dict | None:
         return None
 
     title = extract_title(root, article_number)
-    theme = "Code du travail"
 
     return {
         "id": stable_id(article_number),
