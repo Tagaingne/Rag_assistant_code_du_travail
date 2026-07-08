@@ -22,8 +22,8 @@ MIN_REQUIRED_THEME_COUNT = 5
 EXAMPLE_COUNT = 5
 
 
-# The rupture conventionnelle range is checked before the broader licenciement
-# range because L1237-11 to L1237-19 belongs to both numeric intervals.
+# Specific ranges are checked before the broader contract range.
+# L1237-11 to L1237-19 also belongs to the licenciement interval.
 THEME_RANGES = [
     {
         "theme": "Duree du travail et heures supplementaires",
@@ -36,11 +36,6 @@ THEME_RANGES = [
         "end": "L3141-32",
     },
     {
-        "theme": "Contrat de travail CDI/CDD",
-        "start": "L1221-1",
-        "end": "L1248-11",
-    },
-    {
         "theme": "Rupture conventionnelle",
         "start": "L1237-11",
         "end": "L1237-19",
@@ -49,6 +44,11 @@ THEME_RANGES = [
         "theme": "Licenciement",
         "start": "L1231-1",
         "end": "L1237-20",
+    },
+    {
+        "theme": "Contrat de travail CDI/CDD",
+        "start": "L1221-1",
+        "end": "L1248-11",
     },
     {
         "theme": "Salaire minimum SMIC",
