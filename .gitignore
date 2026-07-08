@@ -1,0 +1,22 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Base vectorielle persistee / donnees volumineuses
+data/vector_store/
+data/chroma/
+*.faiss
+*.index
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
