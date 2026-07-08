@@ -352,8 +352,12 @@ def print_quality_summary(documents: list[dict]) -> None:
 
 
 def main() -> None:
-    documents = extract_documents()
-    validate_documents(documents)
+    try:
+        documents = extract_documents()
+        validate_documents(documents)
+    except (FileNotFoundError, ValueError) as error:
+        raise SystemExit(f"Erreur: {error}") from error
+
     print_quality_summary(documents)
     write_documents(documents, OUTPUT_FILE)
     print(f"Fichier genere: {OUTPUT_FILE}")
