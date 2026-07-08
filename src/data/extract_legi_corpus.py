@@ -4,6 +4,7 @@ Milestone 1 only prepares homogeneous documents. It does not create chunks,
 embeddings, a vector database, retrieval, or LLM calls.
 """
 
+from collections import Counter
 from datetime import date
 from html import unescape
 import json
@@ -17,6 +18,8 @@ OUTPUT_FILE = Path("data/processed/corpus_legi_clean.json")
 SOURCE_LABEL = "LEGI data.gouv.fr"
 LABOR_CODE_TITLE = "code du travail"
 ARTICLE_REF_PATTERN = re.compile(r"^([A-Z]+)([0-9]+(?:-[0-9]+)+)$")
+MIN_REQUIRED_THEME_COUNT = 5
+EXAMPLE_COUNT = 5
 
 
 # The rupture conventionnelle range is checked before the broader licenciement
@@ -282,10 +285,77 @@ def write_documents(documents: list[dict], output_file: Path) -> None:
         file.write("\n")
 
 
+def validate_documents(documents: list[dict]) -> None:
+    """Run quality checks required by milestone 1."""
+    errors = []
+
+    if not documents:
+        errors.append("Aucun article exploitable n'a ete extrait.")
+
+    empty_id_count = sum(1 for document in documents if not document.get("id"))
+    empty_article_count = sum(1 for document in documents if not document.get("article"))
+    empty_text_count = sum(1 for document in documents if not document.get("text"))
+
+    if empty_id_count:
+        errors.append(f"{empty_id_count} document(s) ont un id vide.")
+    if empty_article_count:
+        errors.append(f"{empty_article_count} document(s) ont un article vide.")
+    if empty_text_count:
+        errors.append(f"{empty_text_count} document(s) ont un texte vide.")
+
+    article_counts = Counter(document["article"] for document in documents)
+    duplicate_articles = [
+        article for article, count in article_counts.items() if count > 1
+    ]
+    if duplicate_articles:
+        preview = ", ".join(sorted(duplicate_articles)[:10])
+        errors.append(
+            "Doublons d'articles detectes: "
+            f"{preview}. Chaque article doit apparaitre une seule fois."
+        )
+
+    theme_counts = Counter(document["theme"] for document in documents)
+    if len(theme_counts) < MIN_REQUIRED_THEME_COUNT:
+        errors.append(
+            "Nombre de themes insuffisant: "
+            f"{len(theme_counts)} theme(s) extrait(s), "
+            f"{MIN_REQUIRED_THEME_COUNT} requis au minimum."
+        )
+
+    if errors:
+        raise ValueError("Controle qualite echoue:\n- " + "\n- ".join(errors))
+
+
+def print_quality_summary(documents: list[dict]) -> None:
+    """Print corpus statistics and cleaned examples."""
+    theme_counts = Counter(document["theme"] for document in documents)
+
+    print(f"Nombre total d'articles: {len(documents)}")
+    print("\nNombre d'articles par theme")
+    print("-" * 80)
+    for theme, count in sorted(theme_counts.items()):
+        print(f"{theme}: {count}")
+
+    print(f"\n{EXAMPLE_COUNT} exemples nettoyes")
+    print("-" * 80)
+    for document in documents[:EXAMPLE_COUNT]:
+        text_preview = document["text"][:300]
+        if len(document["text"]) > 300:
+            text_preview += "..."
+
+        print(f"ID: {document['id']}")
+        print(f"Article: {document['article']}")
+        print(f"Theme: {document['theme']}")
+        print(f"Titre: {document['title']}")
+        print(f"Texte: {text_preview}")
+        print("-" * 80)
+
+
 def main() -> None:
     documents = extract_documents()
+    validate_documents(documents)
+    print_quality_summary(documents)
     write_documents(documents, OUTPUT_FILE)
-    print(f"Documents extraits: {len(documents)}")
     print(f"Fichier genere: {OUTPUT_FILE}")
 
 
