@@ -77,6 +77,19 @@ Le script filtre les articles par plages pour couvrir les themes du sujet :
 
 Les plages specifiques sont testees avant la plage plus large du contrat de travail. La rupture conventionnelle est aussi testee avant la plage plus large du licenciement afin de conserver ce theme specifique.
 
+### Fraicheur juridique des donnees
+
+Le Code du travail evolue dans le temps. Un meme article peut donc exister sous plusieurs versions successives dans LEGI. Pour eviter de repondre avec une version obsolescente, le pipeline conserve uniquement la version juridiquement en vigueur de chaque article.
+
+La selection repose sur les metadonnees LEGI :
+
+- `ETAT` doit etre egal a `VIGUEUR` ;
+- `DATE_DEBUT` doit etre anterieure ou egale a la date d'extraction ;
+- `DATE_FIN` doit etre posterieure a la date d'extraction, generalement `2999-01-01` pour une version sans fin connue ;
+- si plusieurs versions courantes existent pour le meme numero d'article, la version avec la date d'entree en vigueur la plus recente est conservee.
+
+Les anciennes versions sont ignorees dans le corpus final. Elles ne sont pas stockees dans un historique separe pour le jalon 1.
+
 ### Champs du JSON final
 
 Chaque document extrait a la structure suivante :
@@ -88,14 +101,20 @@ Chaque document extrait a la structure suivante :
   "theme": "Duree du travail et heures supplementaires",
   "title": "Article L3121-1",
   "text": "Texte nettoye de l'article...",
-  "content": "Article L3121-1\nTheme : ...\nTitre : ...\nTexte : ...",
+  "content": "Article L3121-1\nTheme : ...\nTitre : ...\nEtat juridique : VIGUEUR\nDate d'entree en vigueur : ...\nDate de fin de validite : ...\nDate de derniere modification : ...\nTexte : ...",
+  "legi_id": "LEGIARTI000033020517",
+  "etat": "VIGUEUR",
+  "date_debut": "2016-08-10",
+  "date_fin": "2999-01-01",
+  "date_derniere_modification": "2016-08-08",
+  "date_derniere_modification_source": "LIEN typelien=MODIFIE",
   "source": "LEGI data.gouv.fr",
   "source_file": "data/raw/legi/...",
   "date_extraction": "YYYY-MM-DD"
 }
 ```
 
-Le champ `content` est prepare pour la suite du projet : il rassemble l'article, le theme, le titre et le texte dans une seule chaine qui pourra etre indexee plus tard.
+Le champ `content` est prepare pour la suite du projet : il rassemble l'article, le theme, le titre, les metadonnees de validite juridique et le texte dans une seule chaine qui pourra etre indexee plus tard.
 
 ### Controles qualite
 
@@ -104,13 +123,17 @@ Le script verifie :
 - aucun id vide ;
 - aucun numero d'article vide ;
 - aucun texte vide ;
+- aucun etat juridique vide ;
+- aucune date d'entree en vigueur vide ;
+- aucune date de fin de validite vide ;
+- aucune version non en vigueur dans le corpus final ;
 - aucun doublon d'article ;
 - au moins 5 themes extraits ;
 - affichage du nombre total d'articles ;
 - affichage du nombre d'articles par theme ;
-- affichage de 5 exemples nettoyes.
+- affichage de 5 exemples nettoyes avec leurs dates juridiques.
 
-Sur l'archive `Freemium_legi_global_20250713-140000.tar.gz`, l'extraction ciblee a parcouru 5 253 903 entrees, analyse 41 815 XML du Code du travail et extrait 864 articles utiles. Le corpus propre genere contient 864 documents repartis sur 8 themes.
+Sur l'archive `Freemium_legi_global_20250713-140000.tar.gz`, l'extraction ciblee a parcouru 5 253 903 entrees, analyse 41 815 XML du Code du travail et extrait 864 versions candidates. Apres filtrage des versions non en vigueur, le corpus propre genere contient 812 documents repartis sur 8 themes. Les 52 versions non en vigueur detectees sont ignorees.
 
 ### Limites actuelles
 
