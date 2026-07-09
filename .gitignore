@@ -1,9 +1,29 @@
+# Secrets
+.env
+
+# Python
 __pycache__/
 *.py[cod]
-
-.env
 .venv/
 venv/
+*.egg-info/
 
+# Donnees LEGI brutes (volumineuses, non versionnees sauf .gitkeep)
 data/raw/legi/*
 !data/raw/legi/.gitkeep
+
+# Base vectorielle persistee / donnees volumineuses
+data/vector_store/
+data/chroma/
+*.faiss
+*.index
+
+# Ressources locales (corpus brut, fichiers volumineux non versionnes)
+resources/
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/

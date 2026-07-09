@@ -1,0 +1,17 @@
+# --- Embeddings ---
+sentence-transformers
+
+# --- Base vectorielle (choisir une option, decision d'equipe a trancher pour le jalon 2) ---
+# chromadb
+# faiss-cpu
+
+# --- LLM (generation) ---
+groq
+
+# --- Recuperation du corpus / config ---
+requests
+python-dotenv
+
+# --- Utilitaires ---
+numpy
+tqdm
