@@ -4,7 +4,7 @@ from pathlib import Path
 
 from src.agent import Agent
 from src.config import DEFAULT_TOP_K, LLM_MODEL, MAX_CONTEXT_CHUNKS
-from src.decomposition_agent import DecompositionAgent
+from src.question_formatter_agent import QuestionFormatterAgent
 
 
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
@@ -14,11 +14,11 @@ class RagAgent(Agent):
     def __init__(self, vector_db_object):
         super().__init__()
         self.vector_db_object = vector_db_object
-        self.decomposition_agent = DecompositionAgent()
+        self.question_formatter_agent = QuestionFormatterAgent()
 
     def build_context(self, question):
-        sous_questions = self.decomposition_agent.decompose_question(question)
-        documents, metadatas = self._retrieve_for_sub_questions(sous_questions)
+        requetes_recherche = self.question_formatter_agent.format_question(question)
+        documents, metadatas = self._retrieve_for_queries(requetes_recherche)
 
         chunks_formates = [
             self._format_chunk(doc, meta) for doc, meta in zip(documents, metadatas)
@@ -29,13 +29,13 @@ class RagAgent(Agent):
 
         return prompt_system, documents, metadatas
 
-    def _retrieve_for_sub_questions(self, sous_questions):
+    def _retrieve_for_queries(self, requetes_recherche):
         candidats = []
         articles_vus = set()
 
-        for sous_question in sous_questions:
+        for requete in requetes_recherche:
             sous_documents, sous_metadatas = self.vector_db_object.retrieve(
-                sous_question, n=DEFAULT_TOP_K
+                requete, n=DEFAULT_TOP_K
             )
             for doc, meta in zip(sous_documents, sous_metadatas):
                 article = meta.get("article")
