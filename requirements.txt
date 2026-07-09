@@ -1,5 +1,16 @@
-groq
-python-dotenv
+# --- Embeddings ---
 sentence-transformers
+
+# --- Base vectorielle ---
 chromadb
-pandas
+
+# --- LLM (generation) ---
+groq
+
+# --- Recuperation du corpus / config ---
+requests
+python-dotenv
+
+# --- Utilitaires ---
+numpy
+tqdm
