@@ -3,10 +3,14 @@
 
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
 .venv/
 venv/
 *.egg-info/
+
+# Donnees LEGI brutes (volumineuses, non versionnees sauf .gitkeep)
+data/raw/legi/*
+!data/raw/legi/.gitkeep
 
 # Base vectorielle persistee / donnees volumineuses
 data/vector_store/
