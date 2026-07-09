@@ -2,8 +2,11 @@
 
 from agent import Agent
 from config import LLM_MODEL, TOP_K
+from pathlib import Path
 
 import json
+
+PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
 
 
 class RagAgent(Agent):
@@ -12,10 +15,8 @@ class RagAgent(Agent):
         self.vector_db_object = vector_db_object
 
     def build_context(self, question):
-        
         documents, metadatas = self.vector_db_object.retrieve(question, n=TOP_K)
 
-        # Formater les chunks avec leurs métadonnées
         chunks_formates = []
         for i, (doc, meta) in enumerate(zip(documents, metadatas)):
             article = meta.get("article", "Article inconnu")
@@ -23,13 +24,12 @@ class RagAgent(Agent):
             chunk = f"[Article {article} - {section}]\n{doc}"
             chunks_formates.append(chunk)
 
-        prompt_system = Agent.read_file("./prompts/rag_prompt_system.txt")
+        prompt_system = Agent.read_file(str(PROMPTS_DIR / "rag_prompt_system.txt"))
         prompt_system = prompt_system.replace("{{CHUNKS}}", "\n\n".join(chunks_formates))
 
         return prompt_system, documents, metadatas
 
     def ask(self, question):
-       
         prompt_system, documents, metadatas = self.build_context(question)
 
         chat_completion = self.client.chat.completions.create(
