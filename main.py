@@ -4,6 +4,7 @@ import sys
 
 from src.agent import MissingGroqApiKey
 from src.config import VECTOR_STORE_DIR
+from src.freshness_label import format_freshness_label
 from src.manager_agent import ManagerAgent, PromptInjectionDetected
 from src.vector_db import VectorDB
 
@@ -19,7 +20,11 @@ def afficher_sources(documents, metadatas):
     for i, (doc, meta) in enumerate(zip(documents, metadatas)):
         article = meta.get("article", "Inconnu")
         theme = meta.get("theme", "")
-        print(f"  [{i+1}] Article {article} — {theme}")
+        ligne = f"  [{i+1}] Article {article} — {theme}"
+        fraicheur = format_freshness_label(meta)
+        if fraicheur:
+            ligne += f" [{fraicheur}]"
+        print(ligne)
 
 
 def main():

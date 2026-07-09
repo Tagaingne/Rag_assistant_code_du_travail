@@ -125,7 +125,10 @@ function addSources(container, sources) {
   const sourcesDiv = document.createElement("div");
   sourcesDiv.className = "sources";
   const list = sources
-    .map((s) => `<li>Article <strong>${s.article}</strong> — ${s.theme}</li>`)
+    .map((s) => {
+      const fraicheur = s.fraicheur ? ` <em>(${s.fraicheur})</em>` : "";
+      return `<li>Article <strong>${s.article}</strong> — ${s.theme}${fraicheur}</li>`;
+    })
     .join("");
   sourcesDiv.innerHTML = "Sources :<ol>" + list + "</ol>";
   container.appendChild(sourcesDiv);

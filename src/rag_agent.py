@@ -4,8 +4,17 @@ import re
 from pathlib import Path
 
 from src.agent import Agent
-from src.config import DEFAULT_TOP_K, LLM_MODEL, MAX_CONTEXT_CHUNKS
+from src.config import (
+    DEFAULT_TOP_K,
+    LEGIFRANCE_CLIENT_ID,
+    LEGIFRANCE_CLIENT_SECRET,
+    LLM_MODEL,
+    MAX_CONTEXT_CHUNKS,
+)
+from src.legifrance.legifrance_client import LegifranceClient
+from src.legifrance.oauth_client import LegifranceOAuthClient
 from src.question_formatter_agent import QuestionFormatterAgent
+from src.reference_retriever_agent import ReferenceRetrieverAgent
 
 
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
@@ -17,6 +26,14 @@ class RagAgent(Agent):
         super().__init__()
         self.vector_db_object = vector_db_object
         self.question_formatter_agent = QuestionFormatterAgent()
+        self.reference_retriever_agent = self._build_reference_retriever_agent()
+
+    def _build_reference_retriever_agent(self):
+        if not (LEGIFRANCE_CLIENT_ID and LEGIFRANCE_CLIENT_SECRET):
+            return None
+        oauth_client = LegifranceOAuthClient(LEGIFRANCE_CLIENT_ID, LEGIFRANCE_CLIENT_SECRET)
+        legifrance_client = LegifranceClient(oauth_client)
+        return ReferenceRetrieverAgent(legifrance_client)
 
     def build_context(self, question):
         requetes_recherche = self.question_formatter_agent.format_question(question)
@@ -78,7 +95,13 @@ class RagAgent(Agent):
 
         response = chat_completion.choices[0].message.content
         documents, metadatas = self._keep_cited_sources(response, documents, metadatas)
+        metadatas = self._check_sources_freshness(documents, metadatas)
         return response, documents, metadatas
+
+    def _check_sources_freshness(self, documents, metadatas):
+        if self.reference_retriever_agent is None:
+            return metadatas
+        return self.reference_retriever_agent.check_freshness(documents, metadatas)
 
     def _keep_cited_sources(self, response, documents, metadatas):
         articles_cites = set(ARTICLE_REFERENCE_PATTERN.findall(response))

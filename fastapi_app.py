@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from src.agent import MissingGroqApiKey
 from src.config import VECTOR_STORE_DIR
+from src.freshness_label import format_freshness_label
 from src.manager_agent import ManagerAgent, PromptInjectionDetected
 from src.vector_db import VectorDB
 
@@ -31,6 +32,7 @@ class QuestionRequest(BaseModel):
 class SourceResponse(BaseModel):
     article: str
     theme: str
+    fraicheur: str = ""
 
 
 class AnswerResponse(BaseModel):
@@ -66,7 +68,11 @@ def ask_question(payload: QuestionRequest) -> AnswerResponse:
     try:
         response, _, metadatas = manager.ask(payload.question)
         sources = [
-            SourceResponse(article=meta.get("article", "Inconnu"), theme=meta.get("theme", ""))
+            SourceResponse(
+                article=meta.get("article", "Inconnu"),
+                theme=meta.get("theme", ""),
+                fraicheur=format_freshness_label(meta),
+            )
             for meta in metadatas
         ]
         return AnswerResponse(response=response, sources=sources, avertissement=AVERTISSEMENT)

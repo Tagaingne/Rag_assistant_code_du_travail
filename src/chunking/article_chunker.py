@@ -104,6 +104,7 @@ class ArticleChunker:
             theme=document["theme"],
             title=document["title"],
             source=document["source"],
+            legi_id=document["legi_id"],
             chunk_index=index,
             chunk_count=total_parts,
         )
