@@ -2,7 +2,7 @@
 
 ---
 
-## 1. Note de synthèse (4 pages maximum)
+## 1. Note de synthèse
 
 Je pars de notre projet d'assistant RAG sur le Code du travail. Aujourd'hui, notre architecture ressemble au RAG classique vu en cours : on extrait les articles, on découpe, on ajoute des métadonnées juridiques, puis on recherche les passages utiles avant de générer une réponse. Cette base est saine, mais elle montre vite ses limites dès que l'on veut garantir une référence exacte, suivre une version d'article dans le temps, ou répondre à une question qui demande plusieurs étapes de raisonnement.
 
