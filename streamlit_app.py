@@ -18,6 +18,11 @@ AVERTISSEMENT = (
     "Consultez un avocat ou l'inspection du travail pour votre situation personnelle."
 )
 
+MESSAGE_ERREUR_GENERIQUE = (
+    "Une erreur est survenue pendant le traitement de votre question "
+    "(service indisponible ou quota dépassé). Réessayez dans quelques instants."
+)
+
 
 @st.cache_resource(show_spinner="Chargement de la base vectorielle...")
 def load_manager() -> ManagerAgent:
@@ -49,7 +54,10 @@ def render_history() -> None:
         with st.chat_message("user"):
             st.markdown(entry["question"])
         with st.chat_message("assistant"):
-            st.markdown(entry["response"])
+            if entry.get("erreur"):
+                st.warning(entry["response"])
+            else:
+                st.markdown(entry["response"])
             render_sources(entry["metadatas"])
             st.caption(AVERTISSEMENT)
 
@@ -63,6 +71,13 @@ def ask_question(manager: ManagerAgent, question: str) -> dict:
             "question": question,
             "response": f"Question refusée : {e.raison}",
             "metadatas": [],
+        }
+    except Exception:
+        return {
+            "question": question,
+            "response": MESSAGE_ERREUR_GENERIQUE,
+            "metadatas": [],
+            "erreur": True,
         }
 
 

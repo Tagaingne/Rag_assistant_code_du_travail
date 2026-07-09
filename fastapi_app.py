@@ -24,6 +24,11 @@ AVERTISSEMENT = (
     "Consultez un avocat ou l'inspection du travail pour votre situation personnelle."
 )
 
+MESSAGE_ERREUR_GENERIQUE = (
+    "Une erreur est survenue pendant le traitement de votre question "
+    "(service indisponible ou quota dépassé). Réessayez dans quelques instants."
+)
+
 
 class QuestionRequest(BaseModel):
     question: str
@@ -40,6 +45,7 @@ class AnswerResponse(BaseModel):
     sources: list[SourceResponse]
     avertissement: str
     refuse: bool = False
+    erreur: bool = False
 
 
 def build_manager() -> ManagerAgent:
@@ -82,4 +88,11 @@ def ask_question(payload: QuestionRequest) -> AnswerResponse:
             sources=[],
             avertissement=AVERTISSEMENT,
             refuse=True,
+        )
+    except Exception:
+        return AnswerResponse(
+            response=MESSAGE_ERREUR_GENERIQUE,
+            sources=[],
+            avertissement=AVERTISSEMENT,
+            erreur=True,
         )
