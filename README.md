@@ -8,6 +8,7 @@ Assistant juridique répondant à des questions sur le droit du travail françai
 
 - [Installation](#installation)
 - [Utilisation](#utilisation)
+- [Versions](#versions)
 - [Choix techniques](#choix-techniques)
 - [Questions de réflexion](#questions-de-réflexion)
 
@@ -33,8 +34,17 @@ python index.py
 python evaluate_retrieval.py
 
 # 4. Interroger l'assistant (jalon 4-5)
-python query.py
+python main.py
 ```
+
+## Versions
+
+| Tag | Contenu | Détail |
+|---|---|---|
+| `v0.1.0` | Jalons 1 à 3 : corpus LEGI, chunking/indexation, retrieval validé sur 5 questions | [docs/jalon1_corpus_legi.md](docs/jalon1_corpus_legi.md), [docs/jalon2_jalon3_indexation_retrieval.md](docs/jalon2_jalon3_indexation_retrieval.md) |
+| `v1.0.0` | Jalons 1 à 5 : pipeline complet — génération avec citations, modération anti-injection, interface CLI interactive | [docs/fix_integration_jalon2_4.md](docs/fix_integration_jalon2_4.md) |
+
+Les deux tags sont posés sur `main`. `v1.0.0` a été validé de bout en bout (indexation, retrieval, génération, modération, CLI) avec un vrai appel à l'API Groq avant d'être taggé.
 
 ## Choix techniques
 
