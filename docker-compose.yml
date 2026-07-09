@@ -1,0 +1,12 @@
+services:
+  assistant:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - vector_store:/app/data/vector_store
+    env_file:
+      - .env
+
+volumes:
+  vector_store:

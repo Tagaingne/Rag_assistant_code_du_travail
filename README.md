@@ -6,11 +6,38 @@ Assistant juridique répondant à des questions sur le droit du travail françai
 
 ## Sommaire
 
+- [Démarrage rapide](#démarrage-rapide)
 - [Installation](#installation)
 - [Utilisation](#utilisation)
+- [Docker (une commande)](#docker-une-commande)
 - [Versions](#versions)
 - [Choix techniques](#choix-techniques)
 - [Questions de réflexion](#questions-de-réflexion)
+
+## Démarrage rapide
+
+Le corpus (`data/processed/corpus_legi_clean.json`) est déjà versionné dans le dépôt : après un `git clone`, pas besoin de refaire l'extraction LEGI pour démarrer. Seul prérequis bloquant dans les deux cas ci-dessous : une clé Groq valide (gratuite sur [console.groq.com](https://console.groq.com)) — sans elle, l'app démarre mais refuse de répondre, avec un message d'erreur clair.
+
+**Option A — Docker (le plus simple)**
+
+```bash
+cp .env.example .env   # puis renseigner GROQ_API_KEY
+./docker-start.sh
+```
+
+Une seule commande : build, démarrage, indexation automatique au premier lancement, ouverture du navigateur sur `http://localhost:8000`. Prérequis : Docker Desktop installé et lancé. Détails : [Docker (une commande)](#docker-une-commande).
+
+**Option B — Sans Docker, en local**
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # puis renseigner GROQ_API_KEY
+python index.py        # construit la base vectorielle (une seule fois)
+python main.py         # interroge l'assistant en CLI
+```
+
+`LEGIFRANCE_CLIENT_ID`/`LEGIFRANCE_CLIENT_SECRET` (dans `.env`) sont optionnels : sans eux, tout fonctionne, juste sans la vérification de fraîcheur en direct sur Légifrance.
 
 ## Installation
 
@@ -42,6 +69,22 @@ streamlit run streamlit_app.py
 # 4ter. Ou via l'interface web FastAPI (bonus, meme logique metier) - http://localhost:8000
 uvicorn fastapi_app:app --reload
 ```
+
+## Docker (une commande)
+
+Construit l'image, démarre le conteneur, indexe automatiquement le corpus au premier démarrage si la base n'existe pas encore, et ouvre le navigateur sur l'interface FastAPI.
+
+```bash
+cp .env.example .env  # puis renseigner GROQ_API_KEY, si pas deja fait
+./docker-start.sh
+```
+
+- Premier démarrage : quelques minutes (téléchargement du modèle d'embedding + indexation des 812 articles).
+- Démarrages suivants : quasi instantanés (base persistée dans un volume Docker nommé `vector_store`).
+- Logs : `docker compose logs -f`. Arrêt : `docker compose down` (le volume `vector_store` est conservé ; `docker compose down -v` le supprime aussi).
+- Détails, bug trouvé (paquets CUDA superflus) et preuve de validation : [docs/docker_setup.md](docs/docker_setup.md).
+
+**Validé de bout en bout** : build réel, auto-indexation au premier démarrage (877 chunks), persistance confirmée (un `docker compose restart` ne réindexe pas), endpoint `/ask` testé avec un vrai appel Groq + vérification Légifrance en direct, tout via `http://localhost:8000`.
 
 ## Versions
 
