@@ -1,4 +1,4 @@
-# src/config.py
+
 
 from dotenv import load_dotenv
 import os
@@ -12,7 +12,8 @@ except KeyError:
 
 # Modèles
 LLM_MODEL = "llama-3.3-70b-versatile"
-EMBEDDING_MODEL = "distiluse-base-multilingual-cased-v2"
+# EMBEDDING_MODEL = "distiluse-base-multilingual-cased-v2"
+EMBEDDING_MODEL = "paraphrase-multilingual-MiniLM-L12-v2"
 MODERATOR_MODEL = "llama-3.1-8b-instant"
 
 # Base vectorielle
