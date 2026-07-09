@@ -25,3 +25,7 @@ ARTICLE_CHUNK_SIZE_THRESHOLD = 1500
 CHUNK_OVERLAP_RATIO = 0.15
 
 DEFAULT_TOP_K = 5
+
+# Apres decomposition (jalon 6), plusieurs sous-questions peuvent remonter des
+# chunks en double : ce plafond evite de noyer le contexte envoye au LLM.
+MAX_CONTEXT_CHUNKS = 8

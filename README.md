@@ -55,7 +55,7 @@ Les deux tags sont posés sur `main`. `v1.0.0` a été validé de bout en bout (
 | Modèle d'embedding | `intfloat/multilingual-e5-base` (sentence-transformers), choisi après comparaison empirique, fixé par l'équipe via `.env` | [docs/jalon2_jalon3_indexation_retrieval.md](docs/jalon2_jalon3_indexation_retrieval.md) |
 | Base vectorielle | ChromaDB, persistance locale, métadonnées + nom du modèle stockés avec la collection | [docs/jalon2_jalon3_indexation_retrieval.md](docs/jalon2_jalon3_indexation_retrieval.md) |
 | Validation du retrieval | 5 questions de test, 3 modèles d'embedding comparés (2/5 → 4/5 → 5/5) | [docs/jalon2_jalon3_indexation_retrieval.md](docs/jalon2_jalon3_indexation_retrieval.md) |
-| Amélioration jalon 6 | Décomposition (exigée à l'oral) + recherche hybride (utile en général, moins urgente depuis le 5/5) | [docs/jalon6_ameliorations.md](docs/jalon6_ameliorations.md) |
+| Amélioration jalon 6 | Agent formateur de question **implémenté** : nettoyage des mots parasites + décomposition (exigée à l'oral) + HyDE — recherche hybride envisagée en secondaire, non prioritaire depuis le 5/5 | [docs/jalon6_ameliorations.md](docs/jalon6_ameliorations.md) |
 | Modèle Groq | `openai/gpt-oss-120b` (génération), `openai/gpt-oss-safeguard-20b` (modérateur) — fixés par l'équipe via `.env` | [Jalon 6](docs/jalon6_ameliorations.md) |
 
 ## Questions de réflexion
