@@ -1,9 +1,8 @@
 # --- Embeddings ---
 sentence-transformers
 
-# --- Base vectorielle (choisir une option, decision d'equipe a trancher pour le jalon 2) ---
-# chromadb
-# faiss-cpu
+# --- Base vectorielle ---
+chromadb
 
 # --- LLM (generation) ---
 groq
