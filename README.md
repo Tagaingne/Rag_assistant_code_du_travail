@@ -6,12 +6,38 @@ Assistant juridique répondant à des questions sur le droit du travail françai
 
 ## Sommaire
 
+- [Démarrage rapide](#démarrage-rapide)
 - [Installation](#installation)
 - [Utilisation](#utilisation)
 - [Docker (une commande)](#docker-une-commande)
 - [Versions](#versions)
 - [Choix techniques](#choix-techniques)
 - [Questions de réflexion](#questions-de-réflexion)
+
+## Démarrage rapide
+
+Le corpus (`data/processed/corpus_legi_clean.json`) est déjà versionné dans le dépôt : après un `git clone`, pas besoin de refaire l'extraction LEGI pour démarrer. Seul prérequis bloquant dans les deux cas ci-dessous : une clé Groq valide (gratuite sur [console.groq.com](https://console.groq.com)) — sans elle, l'app démarre mais refuse de répondre, avec un message d'erreur clair.
+
+**Option A — Docker (le plus simple)**
+
+```bash
+cp .env.example .env   # puis renseigner GROQ_API_KEY
+./docker-start.sh
+```
+
+Une seule commande : build, démarrage, indexation automatique au premier lancement, ouverture du navigateur sur `http://localhost:8000`. Prérequis : Docker Desktop installé et lancé. Détails : [Docker (une commande)](#docker-une-commande).
+
+**Option B — Sans Docker, en local**
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # puis renseigner GROQ_API_KEY
+python index.py        # construit la base vectorielle (une seule fois)
+python main.py         # interroge l'assistant en CLI
+```
+
+`LEGIFRANCE_CLIENT_ID`/`LEGIFRANCE_CLIENT_SECRET` (dans `.env`) sont optionnels : sans eux, tout fonctionne, juste sans la vérification de fraîcheur en direct sur Légifrance.
 
 ## Installation
 
