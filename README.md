@@ -13,6 +13,8 @@ Assistant juridique répondant à des questions sur le droit du travail françai
 - [Versions](#versions)
 - [Choix techniques](#choix-techniques)
 - [Questions de réflexion](#questions-de-réflexion)
+- [Compte rendu](COMPTE_RENDU.md) — difficultés rencontrées, décisions de conception, pistes d'amélioration
+- [Veille technologique — au-delà du RAG](docs/veille_au_dela_rag/veille_au_dela_du_rag.md)
 
 ## Démarrage rapide
 
@@ -92,8 +94,12 @@ cp .env.example .env  # puis renseigner GROQ_API_KEY, si pas deja fait
 |---|---|---|
 | `v0.1.0` | Jalons 1 à 3 : corpus LEGI, chunking/indexation, retrieval validé sur 5 questions | [docs/jalon1_corpus_legi.md](docs/jalon1_corpus_legi.md), [docs/jalon2_jalon3_indexation_retrieval.md](docs/jalon2_jalon3_indexation_retrieval.md) |
 | `v1.0.0` | Jalons 1 à 5 : pipeline complet — génération avec citations, modération anti-injection, interface CLI interactive | [docs/fix_integration_jalon2_4.md](docs/fix_integration_jalon2_4.md) |
+| `v1.1.0` | Jalon 6 : agent formateur de question (nettoyage des mots parasites, décomposition exigée à l'oral, HyDE) | [docs/jalon6_ameliorations.md](docs/jalon6_ameliorations.md) |
+| `v1.2.0` | Interfaces Streamlit/FastAPI, corrections de retrieval (dédup par article, sources filtrées aux citations réelles), agent récupérateur de référence (API Légifrance) | [docs/legifrance_reference_retriever.md](docs/legifrance_reference_retriever.md) |
+| `v1.2.1` | Ajout du compte rendu d'une page | [COMPTE_RENDU.md](COMPTE_RENDU.md) |
+| `v1.3.0` | Setup Docker/MLOps validé de bout en bout, correction du retrieval pour les questions multi-sujets (interleaving équitable entre sous-questions), gestion d'erreur API gracieuse, veille technologique au-delà du RAG | [docs/docker_setup.md](docs/docker_setup.md), [docs/jalon6_ameliorations.md](docs/jalon6_ameliorations.md), [docs/veille_au_dela_rag/veille_au_dela_du_rag.md](docs/veille_au_dela_rag/veille_au_dela_du_rag.md) |
 
-Les deux tags sont posés sur `main`. `v1.0.0` a été validé de bout en bout (indexation, retrieval, génération, modération, CLI) avec un vrai appel à l'API Groq avant d'être taggé.
+Tous les tags sont posés sur `main`. Chaque montée de version a été validée avec de vrais appels API (Groq, et Légifrance à partir de `v1.2.0`) avant d'être taggée — voir le détail dans les docs liées.
 
 ## Choix techniques
 
@@ -108,6 +114,8 @@ Les deux tags sont posés sur `main`. `v1.0.0` a été validé de bout en bout (
 | Agent récupérateur de référence | **Implémenté** (optionnel) : vérifie en direct sur l'API Légifrance (OAuth2 PISTE) si les articles cités sont toujours à jour, en complément du corpus statique | [docs/legifrance_reference_retriever.md](docs/legifrance_reference_retriever.md) |
 | Modèle Groq | `llama-3.3-70b-versatile` (génération, décomposition, HyDE), `llama-3.1-8b-instant` (modérateur) — fixés par l'équipe via `.env` | `src/config.py` |
 | Interface | CLI (`main.py`, jalon 5) + Streamlit (`streamlit_app.py`) + FastAPI (`fastapi_app.py` + `static/chat.html`), toutes bonus, même logique métier (`ManagerAgent`/`VectorDB`) sans duplication | — |
+| Retrieval multi-sujets | Sur une question à plusieurs sous-questions, le contexte est réparti équitablement (interleaving) entre sous-questions plutôt que trié globalement — évite qu'un sujet évince totalement un autre du contexte final | [docs/jalon6_ameliorations.md](docs/jalon6_ameliorations.md) |
+| Déploiement | Docker (`Dockerfile` + `docker-compose.yml` + `docker-start.sh`) : build, auto-indexation au premier démarrage, persistance par volume, une seule commande | [docs/docker_setup.md](docs/docker_setup.md) |
 
 ## Questions de réflexion
 
