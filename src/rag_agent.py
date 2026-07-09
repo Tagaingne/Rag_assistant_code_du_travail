@@ -1,5 +1,6 @@
 # src/rag_agent.py
 
+import re
 from pathlib import Path
 
 from src.agent import Agent
@@ -8,6 +9,7 @@ from src.question_formatter_agent import QuestionFormatterAgent
 
 
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
+ARTICLE_REFERENCE_PATTERN = re.compile(r"L\d+(?:-\d+)*")
 
 
 class RagAgent(Agent):
@@ -75,4 +77,16 @@ class RagAgent(Agent):
         )
 
         response = chat_completion.choices[0].message.content
+        documents, metadatas = self._keep_cited_sources(response, documents, metadatas)
         return response, documents, metadatas
+
+    def _keep_cited_sources(self, response, documents, metadatas):
+        articles_cites = set(ARTICLE_REFERENCE_PATTERN.findall(response))
+        paires_citees = [
+            (doc, meta)
+            for doc, meta in zip(documents, metadatas)
+            if meta.get("article") in articles_cites
+        ]
+        documents = [doc for doc, _ in paires_citees]
+        metadatas = [meta for _, meta in paires_citees]
+        return documents, metadatas

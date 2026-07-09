@@ -11,6 +11,11 @@ groq
 requests
 python-dotenv
 
+# --- Interface web ---
+streamlit
+fastapi
+uvicorn[standard]
+
 # --- Utilitaires ---
 numpy
 tqdm

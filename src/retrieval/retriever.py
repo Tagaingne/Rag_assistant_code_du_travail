@@ -8,6 +8,11 @@ from src.retrieval.search_result import SearchResult
 
 
 class Retriever:
+    # Un article long peut etre redecoupe en plusieurs chunks (voir ArticleChunker) :
+    # on sur-echantillonne pour pouvoir dedupliquer par article et quand meme
+    # renvoyer top_k articles distincts, plutot que top_k chunks du meme article.
+    OVERSAMPLE_FACTOR = 3
+
     def __init__(self, vector_store: VectorStore, embedding_model: EmbeddingModel):
         self.vector_store = vector_store
         self.embedding_model = embedding_model
@@ -15,8 +20,19 @@ class Retriever:
 
     def search(self, query: str, top_k: int = DEFAULT_TOP_K) -> list[SearchResult]:
         query_embedding = self.embedding_model.encode_query(query)
-        raw_results = self.vector_store.query(query_embedding, top_k)
-        return self._parse_results(raw_results)
+        raw_results = self.vector_store.query(query_embedding, top_k * self.OVERSAMPLE_FACTOR)
+        results = self._parse_results(raw_results)
+        return self._deduplicate_by_article(results)[:top_k]
+
+    def _deduplicate_by_article(self, results: list[SearchResult]) -> list[SearchResult]:
+        articles_vus = set()
+        deduplicated = []
+        for result in results:
+            if result.article in articles_vus:
+                continue
+            articles_vus.add(result.article)
+            deduplicated.append(result)
+        return deduplicated
 
     def _check_embedding_model_matches_index(self) -> None:
         index_model = self.vector_store.get_collection_metadata().get("embedding_model")
