@@ -56,8 +56,9 @@ cp .env.example .env  # puis renseigner GROQ_API_KEY, si pas deja fait
 - Premier démarrage : quelques minutes (téléchargement du modèle d'embedding + indexation des 812 articles).
 - Démarrages suivants : quasi instantanés (base persistée dans un volume Docker nommé `vector_store`).
 - Logs : `docker compose logs -f`. Arrêt : `docker compose down` (le volume `vector_store` est conservé ; `docker compose down -v` le supprime aussi).
+- Détails, bug trouvé (paquets CUDA superflus) et preuve de validation : [docs/docker_setup.md](docs/docker_setup.md).
 
-**Non testé de bout en bout** : Docker n'est pas disponible dans l'environnement où ce setup a été écrit (syntaxe du `docker-compose.yml` et des scripts shell vérifiée, mais pas le build réel). À tester sur une machine avec Docker installé avant de s'y fier pour la soutenance.
+**Validé de bout en bout** : build réel, auto-indexation au premier démarrage (877 chunks), persistance confirmée (un `docker compose restart` ne réindexe pas), endpoint `/ask` testé avec un vrai appel Groq + vérification Légifrance en direct, tout via `http://localhost:8000`.
 
 ## Versions
 

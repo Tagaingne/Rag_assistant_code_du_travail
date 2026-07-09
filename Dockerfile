@@ -7,7 +7,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+
+# torch (dependance de sentence-transformers) tire par defaut les paquets CUDA
+# GPU sur Linux (plusieurs Go inutiles ici, le conteneur tourne en CPU) :
+# on force la version CPU-only avant le reste, ca coupe le build de ~2,5 Go.
+RUN pip install --no-cache-dir --timeout=180 --retries=10 \
+    torch --index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir --timeout=180 --retries=10 -r requirements.txt
 
 COPY . .
 
