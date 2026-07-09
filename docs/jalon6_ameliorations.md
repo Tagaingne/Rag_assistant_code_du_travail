@@ -1,12 +1,33 @@
 # Jalon 6 — Ameliorations prevues
 
-## Decomposition de la question
+## Decomposition de la question — implementee
 
 Non listee dans les 6 options ecrites du sujet (score de confiance, reformulation, mode comparaison, historique de conversation, recherche hybride, agent moderateur), mais **exigee a l'oral par l'enseignant** en complement du sujet ecrit.
 
-- **Mecanisme** : un premier appel LLM decompose une question complexe ou multi-idees en 2 a 4 sous-questions atomiques. Chaque sous-question est recherchee separement dans la base vectorielle ; les chunks obtenus sont dedupliques puis agreges avant d'etre envoyes au LLM pour la generation finale.
-- **Pourquoi** : une question qui melange plusieurs idees donne un vecteur dilue, moins precis pour le retrieval (cf. README, Q1). La decomposition evite ce piege et couvre naturellement le cas des questions comparatives (« CDI ou CDD, quelle difference pour le preavis ? »), ce qui recoupe l'option ecrite « mode comparaison ».
-- **Combinaison** : s'articule avec l'« historique de conversation », deja rendu quasi indispensable par le choix Q4 du README (agent conversationnel avec clarification active) — les deux mecanismes partagent la meme architecture de boucle multi-tours.
+### Mecanisme
+
+- **`DecompositionAgent`** (`src/decomposition_agent.py`) : un agent Groq dedie (meme pattern que `ModeratorAgent`), qui decompose la question en 2 a 4 sous-questions atomiques via un appel LLM avec sortie JSON forcee (`prompts/decomposition_prompt_system.txt`). Si la question porte deja sur une seule idee, le prompt renvoie une unique sous-question (pas de decoupage force).
+- **`RagAgent`** (`src/rag_agent.py`) compose maintenant ce `DecompositionAgent`. `build_context` :
+  1. decompose la question ;
+  2. recherche separement dans `VectorDB` pour chaque sous-question (`_retrieve_for_sub_questions`) ;
+  3. deduplique les chunks obtenus par numero d'article ;
+  4. trie les candidats par score de similarite (`distance`, ajoute aux metadonnees renvoyees par `VectorDB.retrieve`) ;
+  5. plafonne le contexte final a `MAX_CONTEXT_CHUNKS` (8, voir `src/config.py`) pour eviter de noyer le LLM si plusieurs sous-questions remontent beaucoup de chunks.
+
+### Pourquoi
+
+Une question qui melange plusieurs idees donne un vecteur dilue, moins precis pour le retrieval (cf. README, Q1). La decomposition evite ce piege et couvre naturellement le cas des questions comparatives (« quelle difference entre un licenciement et une rupture conventionnelle ? »), ce qui recoupe l'option ecrite « mode comparaison ».
+
+### Verification
+
+Teste avec de vrais appels Groq :
+- Question comparative (« licenciement vs rupture conventionnelle ») → decomposee en 2 sous-questions, 8 chunks agreges couvrant les deux themes concernes, reponse citant des articles des deux cotes.
+- Question simple (« combien de jours de conges par an ? ») → une seule sous-question (pas de decoupage inutile), reponse normale avec citation.
+- Suite de tests existante (`tests/test_generation.py`) toujours verte apres integration.
+
+### Combinaison avec les autres choix
+
+S'articule avec l'« historique de conversation », deja rendu quasi indispensable par le choix Q4 du README (agent conversationnel avec clarification active) — les deux mecanismes partagent la meme logique de reformulation de requete avant recherche. L'historique de conversation reste a implementer si le temps le permet.
 
 ## Recherche hybride (evaluee, priorite revue apres le jalon 3)
 

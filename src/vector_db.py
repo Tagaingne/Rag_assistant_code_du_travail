@@ -29,4 +29,5 @@ class VectorDB:
             "article": result.article,
             "theme": result.theme,
             "title": result.title,
+            "distance": result.distance,
         }
