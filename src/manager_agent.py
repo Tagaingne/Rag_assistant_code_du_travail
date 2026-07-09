@@ -1,7 +1,7 @@
 # src/manager_agent.py
 
-from moderator_agent import ModeratorAgent
-from rag_agent import RagAgent
+from src.moderator_agent import ModeratorAgent
+from src.rag_agent import RagAgent
 
 
 class PromptInjectionDetected(Exception):
@@ -16,12 +16,12 @@ class ManagerAgent:
         self.rag_agent = RagAgent(vector_db_object)
 
     def ask(self, question):
-        # 1) Modération
+        # 1) Moderation
         moderation = self.moderator_agent.moderate_question(question)
 
         if moderation.get("prompt_injection"):
             raise PromptInjectionDetected(moderation.get("raison", ""))
 
-        # 2) Génération RAG
+        # 2) Generation RAG
         response, documents, metadatas = self.rag_agent.ask(question)
         return response, documents, metadatas

@@ -1,10 +1,10 @@
 # src/rag_agent.py
 
-from agent import Agent
-from config import LLM_MODEL, TOP_K
 from pathlib import Path
 
-import json
+from src.agent import Agent
+from src.config import DEFAULT_TOP_K, LLM_MODEL
+
 
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
 
@@ -15,13 +15,13 @@ class RagAgent(Agent):
         self.vector_db_object = vector_db_object
 
     def build_context(self, question):
-        documents, metadatas = self.vector_db_object.retrieve(question, n=TOP_K)
+        documents, metadatas = self.vector_db_object.retrieve(question, n=DEFAULT_TOP_K)
 
         chunks_formates = []
-        for i, (doc, meta) in enumerate(zip(documents, metadatas)):
+        for doc, meta in zip(documents, metadatas):
             article = meta.get("article", "Article inconnu")
-            section = meta.get("section", "")
-            chunk = f"[Article {article} - {section}]\n{doc}"
+            theme = meta.get("theme", "")
+            chunk = f"[Article {article} - {theme}]\n{doc}"
             chunks_formates.append(chunk)
 
         prompt_system = Agent.read_file(str(PROMPTS_DIR / "rag_prompt_system.txt"))

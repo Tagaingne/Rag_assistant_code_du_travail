@@ -1,25 +1,27 @@
+"""Central configuration for the whole pipeline: indexing, retrieval, generation."""
 
+import os
+from pathlib import Path
 
 from dotenv import load_dotenv
-import os
+
 
 load_dotenv()
 
-try:
-    GROQ_API_KEY = os.environ["GROQ_API_KEY"]
-except KeyError:
-    raise Exception("La variable GROQ_API_KEY est absente du fichier .env")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 
-# Modèles
-LLM_MODEL = "llama-3.3-70b-versatile"
-# EMBEDDING_MODEL = "distiluse-base-multilingual-cased-v2"
-# EMBEDDING_MODEL = "paraphrase-multilingual-MiniLM-L12-v2"
+CORPUS_FILE = Path("data/processed/corpus_legi_clean.json")
 
-EMBEDDING_MODEL = "intfloat/multilingual-e5-base"
-MODERATOR_MODEL = "llama-3.1-8b-instant"
+VECTOR_STORE_DIR = "data/vector_store"
+COLLECTION_NAME = "code_travail"
 
-# Base vectorielle
-VECTOR_DB_PATH = "vector_db"
+# Doivent rester identiques sur toutes les branches de l'equipe (voir .env.example) :
+# changer de modele sans reindexer/sans le repercuter partout casse le pipeline.
+EMBEDDING_MODEL_NAME = os.environ.get("EMBEDDING_MODEL", "intfloat/multilingual-e5-base")
+LLM_MODEL = os.environ.get("LLM_MODEL", "llama-3.3-70b-versatile")
+MODERATOR_MODEL = os.environ.get("MODERATOR_MODEL", "llama-3.1-8b-instant")
 
-# Nombre de chunks à récupérer
-TOP_K = 5
+ARTICLE_CHUNK_SIZE_THRESHOLD = 1500
+CHUNK_OVERLAP_RATIO = 0.15
+
+DEFAULT_TOP_K = 5
