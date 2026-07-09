@@ -8,6 +8,7 @@ import streamlit as st
 
 from src.agent import MissingGroqApiKey
 from src.config import VECTOR_STORE_DIR
+from src.freshness_label import format_freshness_label
 from src.manager_agent import ManagerAgent, PromptInjectionDetected
 from src.vector_db import VectorDB
 
@@ -15,6 +16,11 @@ from src.vector_db import VectorDB
 AVERTISSEMENT = (
     "Cet assistant ne fournit pas de conseil juridique. "
     "Consultez un avocat ou l'inspection du travail pour votre situation personnelle."
+)
+
+MESSAGE_ERREUR_GENERIQUE = (
+    "Une erreur est survenue pendant le traitement de votre question "
+    "(service indisponible ou quota dépassé). Réessayez dans quelques instants."
 )
 
 
@@ -36,7 +42,11 @@ def render_sources(metadatas: list[dict]) -> None:
     for i, meta in enumerate(metadatas, start=1):
         article = meta.get("article", "Inconnu")
         theme = meta.get("theme", "")
-        st.markdown(f"{i}. Article **{article}** — {theme}")
+        ligne = f"{i}. Article **{article}** — {theme}"
+        fraicheur = format_freshness_label(meta)
+        if fraicheur:
+            ligne += f" _({fraicheur})_"
+        st.markdown(ligne)
 
 
 def render_history() -> None:
@@ -44,7 +54,10 @@ def render_history() -> None:
         with st.chat_message("user"):
             st.markdown(entry["question"])
         with st.chat_message("assistant"):
-            st.markdown(entry["response"])
+            if entry.get("erreur"):
+                st.warning(entry["response"])
+            else:
+                st.markdown(entry["response"])
             render_sources(entry["metadatas"])
             st.caption(AVERTISSEMENT)
 
@@ -58,6 +71,13 @@ def ask_question(manager: ManagerAgent, question: str) -> dict:
             "question": question,
             "response": f"Question refusée : {e.raison}",
             "metadatas": [],
+        }
+    except Exception:
+        return {
+            "question": question,
+            "response": MESSAGE_ERREUR_GENERIQUE,
+            "metadatas": [],
+            "erreur": True,
         }
 
 

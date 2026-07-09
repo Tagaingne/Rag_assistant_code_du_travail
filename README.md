@@ -78,6 +78,7 @@ Les deux tags sont posés sur `main`. `v1.0.0` a été validé de bout en bout (
 | Base vectorielle | ChromaDB, persistance locale, métadonnées + nom du modèle stockés avec la collection | [docs/jalon2_jalon3_indexation_retrieval.md](docs/jalon2_jalon3_indexation_retrieval.md) |
 | Validation du retrieval | 5 questions de test, 3 modèles d'embedding comparés (2/5 → 4/5 → 5/5) | [docs/jalon2_jalon3_indexation_retrieval.md](docs/jalon2_jalon3_indexation_retrieval.md) |
 | Amélioration jalon 6 | Agent formateur de question **implémenté** : nettoyage des mots parasites + décomposition (exigée à l'oral) + HyDE — recherche hybride envisagée en secondaire, non prioritaire depuis le 5/5 | [docs/jalon6_ameliorations.md](docs/jalon6_ameliorations.md) |
+| Agent récupérateur de référence | **Implémenté** (optionnel) : vérifie en direct sur l'API Légifrance (OAuth2 PISTE) si les articles cités sont toujours à jour, en complément du corpus statique | [docs/legifrance_reference_retriever.md](docs/legifrance_reference_retriever.md) |
 | Modèle Groq | `llama-3.3-70b-versatile` (génération, décomposition, HyDE), `llama-3.1-8b-instant` (modérateur) — fixés par l'équipe via `.env` | `src/config.py` |
 | Interface | CLI (`main.py`, jalon 5) + Streamlit (`streamlit_app.py`) + FastAPI (`fastapi_app.py` + `static/chat.html`), toutes bonus, même logique métier (`ManagerAgent`/`VectorDB`) sans duplication | — |
 

@@ -12,6 +12,7 @@ class Chunk:
     theme: str
     title: str
     source: str
+    legi_id: str
     chunk_index: int
     chunk_count: int
 
@@ -22,6 +23,7 @@ class Chunk:
             "theme": self.theme,
             "title": self.title,
             "source": self.source,
+            "legi_id": self.legi_id,
             "chunk_index": self.chunk_index,
             "chunk_count": self.chunk_count,
         }

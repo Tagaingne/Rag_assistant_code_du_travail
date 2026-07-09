@@ -46,6 +46,10 @@
     background: #fde2e1;
     border: 1px solid #f5b5b3;
   }
+  .message.erreur {
+    background: #fff3cd;
+    border: 1px solid #ffe08a;
+  }
   .sources {
     margin-top: 8px;
     font-size: 0.8rem;
@@ -125,7 +129,10 @@ function addSources(container, sources) {
   const sourcesDiv = document.createElement("div");
   sourcesDiv.className = "sources";
   const list = sources
-    .map((s) => `<li>Article <strong>${s.article}</strong> — ${s.theme}</li>`)
+    .map((s) => {
+      const fraicheur = s.fraicheur ? ` <em>(${s.fraicheur})</em>` : "";
+      return `<li>Article <strong>${s.article}</strong> — ${s.theme}${fraicheur}</li>`;
+    })
     .join("");
   sourcesDiv.innerHTML = "Sources :<ol>" + list + "</ol>";
   container.appendChild(sourcesDiv);
@@ -151,7 +158,9 @@ form.addEventListener("submit", async (event) => {
     const data = await response.json();
 
     thinking.remove();
-    const role = data.refuse ? "assistant refuse" : "assistant";
+    let role = "assistant";
+    if (data.refuse) role = "assistant refuse";
+    if (data.erreur) role = "assistant erreur";
     const messageDiv = addMessage(role, data.response);
     addSources(messageDiv, data.sources);
   } catch (error) {

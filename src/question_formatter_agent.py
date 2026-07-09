@@ -9,6 +9,11 @@
 #    question chiffree ("combien de jours ?"), ca peut l'eloigner de l'article
 #    qui donne le chiffre exact. Garder aussi la sous-question brute compense
 #    ce cas sans perdre le benefice de HyDE sur les questions plus conceptuelles.
+#
+# Le retour est groupe par sous-question (pas une liste plate) : RagAgent en a
+# besoin pour repartir equitablement le contexte entre sous-questions plutot
+# que de les fusionner et trier globalement (un sujet qui matche mieux
+# evincerait sinon totalement un autre sujet du contexte final).
 
 from src.decomposition_agent import DecompositionAgent
 from src.hyde_agent import HydeAgent
@@ -21,14 +26,10 @@ class QuestionFormatterAgent:
         self.decomposition_agent = DecompositionAgent()
         self.hyde_agent = HydeAgent()
 
-    def format_question(self, question: str) -> list[str]:
+    def format_question(self, question: str) -> list[list[str]]:
         question_nettoyee = self.question_cleaner.clean(question)
         sous_questions = self.decomposition_agent.decompose_question(question_nettoyee)
-        return self._generate_search_queries(sous_questions)
+        return [self._build_query_group(sous_question) for sous_question in sous_questions]
 
-    def _generate_search_queries(self, sous_questions: list[str]) -> list[str]:
-        requetes = []
-        for sous_question in sous_questions:
-            requetes.append(sous_question)
-            requetes.append(self.hyde_agent.generate_hypothetical_answer(sous_question))
-        return requetes
+    def _build_query_group(self, sous_question: str) -> list[str]:
+        return [sous_question, self.hyde_agent.generate_hypothetical_answer(sous_question)]

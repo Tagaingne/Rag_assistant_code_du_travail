@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from src.agent import MissingGroqApiKey
 from src.config import VECTOR_STORE_DIR
+from src.freshness_label import format_freshness_label
 from src.manager_agent import ManagerAgent, PromptInjectionDetected
 from src.vector_db import VectorDB
 
@@ -23,6 +24,11 @@ AVERTISSEMENT = (
     "Consultez un avocat ou l'inspection du travail pour votre situation personnelle."
 )
 
+MESSAGE_ERREUR_GENERIQUE = (
+    "Une erreur est survenue pendant le traitement de votre question "
+    "(service indisponible ou quota dépassé). Réessayez dans quelques instants."
+)
+
 
 class QuestionRequest(BaseModel):
     question: str
@@ -31,6 +37,7 @@ class QuestionRequest(BaseModel):
 class SourceResponse(BaseModel):
     article: str
     theme: str
+    fraicheur: str = ""
 
 
 class AnswerResponse(BaseModel):
@@ -38,6 +45,7 @@ class AnswerResponse(BaseModel):
     sources: list[SourceResponse]
     avertissement: str
     refuse: bool = False
+    erreur: bool = False
 
 
 def build_manager() -> ManagerAgent:
@@ -66,7 +74,11 @@ def ask_question(payload: QuestionRequest) -> AnswerResponse:
     try:
         response, _, metadatas = manager.ask(payload.question)
         sources = [
-            SourceResponse(article=meta.get("article", "Inconnu"), theme=meta.get("theme", ""))
+            SourceResponse(
+                article=meta.get("article", "Inconnu"),
+                theme=meta.get("theme", ""),
+                fraicheur=format_freshness_label(meta),
+            )
             for meta in metadatas
         ]
         return AnswerResponse(response=response, sources=sources, avertissement=AVERTISSEMENT)
@@ -76,4 +88,11 @@ def ask_question(payload: QuestionRequest) -> AnswerResponse:
             sources=[],
             avertissement=AVERTISSEMENT,
             refuse=True,
+        )
+    except Exception:
+        return AnswerResponse(
+            response=MESSAGE_ERREUR_GENERIQUE,
+            sources=[],
+            avertissement=AVERTISSEMENT,
+            erreur=True,
         )
