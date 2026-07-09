@@ -1,0 +1,14 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.git/
+.env
+resources/
+data/raw/legi/*
+!data/raw/legi/.gitkeep
+data/vector_store/
+docs/
+*.md
+.pytest_cache/
+.DS_Store

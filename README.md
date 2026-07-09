@@ -8,6 +8,7 @@ Assistant juridique répondant à des questions sur le droit du travail françai
 
 - [Installation](#installation)
 - [Utilisation](#utilisation)
+- [Docker (une commande)](#docker-une-commande)
 - [Versions](#versions)
 - [Choix techniques](#choix-techniques)
 - [Questions de réflexion](#questions-de-réflexion)
@@ -42,6 +43,21 @@ streamlit run streamlit_app.py
 # 4ter. Ou via l'interface web FastAPI (bonus, meme logique metier) - http://localhost:8000
 uvicorn fastapi_app:app --reload
 ```
+
+## Docker (une commande)
+
+Construit l'image, démarre le conteneur, indexe automatiquement le corpus au premier démarrage si la base n'existe pas encore, et ouvre le navigateur sur l'interface FastAPI.
+
+```bash
+cp .env.example .env  # puis renseigner GROQ_API_KEY, si pas deja fait
+./docker-start.sh
+```
+
+- Premier démarrage : quelques minutes (téléchargement du modèle d'embedding + indexation des 812 articles).
+- Démarrages suivants : quasi instantanés (base persistée dans un volume Docker nommé `vector_store`).
+- Logs : `docker compose logs -f`. Arrêt : `docker compose down` (le volume `vector_store` est conservé ; `docker compose down -v` le supprime aussi).
+
+**Non testé de bout en bout** : Docker n'est pas disponible dans l'environnement où ce setup a été écrit (syntaxe du `docker-compose.yml` et des scripts shell vérifiée, mais pas le build réel). À tester sur une machine avec Docker installé avant de s'y fier pour la soutenance.
 
 ## Versions
 
