@@ -1,25 +1,26 @@
-# main.py (à la racine)
+# main.py (a la racine)
 
 import sys
-import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "src"))
+from src.agent import MissingGroqApiKey
+from src.config import VECTOR_STORE_DIR
+from src.manager_agent import ManagerAgent, PromptInjectionDetected
+from src.vector_db import VectorDB
 
-from manager_agent import ManagerAgent, PromptInjectionDetected
-from vector_db import VectorDB
-from config import VECTOR_DB_PATH
 
 AVERTISSEMENT = """
   Cet assistant ne fournit pas de conseil juridique.
     Consultez un avocat ou l'inspection du travail pour votre situation personnelle.
 """
 
+
 def afficher_sources(documents, metadatas):
     print("\n Sources :")
     for i, (doc, meta) in enumerate(zip(documents, metadatas)):
         article = meta.get("article", "Inconnu")
-        section = meta.get("section", "")
-        print(f"  [{i+1}] Article {article} — {section}")
+        theme = meta.get("theme", "")
+        print(f"  [{i+1}] Article {article} — {theme}")
+
 
 def main():
     print("=" * 60)
@@ -29,13 +30,18 @@ def main():
 
     print(" Chargement de la base vectorielle...")
     try:
-        vector_db = VectorDB(vector_db_path=VECTOR_DB_PATH)
-    except Exception as e:
+        vector_db = VectorDB(vector_db_path=VECTOR_STORE_DIR)
+    except LookupError as e:
         print(f" Erreur chargement base vectorielle : {e}")
-        print(" Lancez d'abord le script d'indexation.")
+        print(" Lancez d'abord index.py.")
         sys.exit(1)
 
-    manager = ManagerAgent(vector_db_object=vector_db)
+    try:
+        manager = ManagerAgent(vector_db_object=vector_db)
+    except MissingGroqApiKey as e:
+        print(f" Erreur : {e}")
+        sys.exit(1)
+
     print(" Assistant prêt ! Tapez 'quitter' pour arrêter.\n")
 
     while True:
@@ -68,6 +74,7 @@ def main():
         except Exception as e:
             print(f"\n Erreur : {e}")
             print("-" * 60)
+
 
 if __name__ == "__main__":
     main()

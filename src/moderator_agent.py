@@ -1,10 +1,11 @@
 # src/moderator_agent.py
 
-from agent import Agent
-from config import LLM_MODEL
+import json
 from pathlib import Path
 
-import json
+from src.agent import Agent
+from src.config import MODERATOR_MODEL
+
 
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
 
@@ -25,7 +26,7 @@ class ModeratorAgent(Agent):
                     "content": question,
                 }
             ],
-            model=LLM_MODEL,
+            model=MODERATOR_MODEL,
             response_format={"type": "json_object"},
             temperature=0,
         )

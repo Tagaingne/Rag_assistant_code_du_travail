@@ -1,12 +1,8 @@
 # tests/test_generation.py
 # Test de la génération avec des chunks factices
 
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../src"))
-
-from rag_agent import RagAgent
-from moderator_agent import ModeratorAgent
+from src.moderator_agent import ModeratorAgent
+from src.rag_agent import RagAgent
 
 
 # ---- Classe VectorDB factice pour tester sans base réelle ----
@@ -20,11 +16,11 @@ class FakeVectorDB:
             "La rupture conventionnelle permet à l'employeur et au salarié de convenir d'un commun accord de la rupture du contrat."
         ]
         metadatas = [
-            {"article": "L3121-1", "section": "Durée du travail"},
-            {"article": "L3121-28", "section": "Heures supplémentaires"},
-            {"article": "L3141-3", "section": "Congés payés"},
-            {"article": "L1232-1", "section": "Licenciement"},
-            {"article": "L1237-11", "section": "Rupture conventionnelle"},
+            {"article": "L3121-1", "theme": "Durée du travail"},
+            {"article": "L3121-28", "theme": "Heures supplémentaires"},
+            {"article": "L3141-3", "theme": "Congés payés"},
+            {"article": "L1232-1", "theme": "Licenciement"},
+            {"article": "L1237-11", "theme": "Rupture conventionnelle"},
         ]
         return documents[:n], metadatas[:n]
 
