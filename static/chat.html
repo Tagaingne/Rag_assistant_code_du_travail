@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Assistant Code du travail</title>
+<style>
+  :root {
+    color-scheme: light dark;
+  }
+  body {
+    font-family: system-ui, sans-serif;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 24px 16px 120px;
+    background: #f7f7f8;
+    color: #1a1a1a;
+  }
+  h1 {
+    font-size: 1.4rem;
+  }
+  .avertissement {
+    background: #fff3cd;
+    border: 1px solid #ffe08a;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    margin-bottom: 20px;
+  }
+  .message {
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    white-space: pre-wrap;
+    line-height: 1.4;
+  }
+  .message.user {
+    background: #dbe9ff;
+    margin-left: 15%;
+  }
+  .message.assistant {
+    background: #ffffff;
+    border: 1px solid #e2e2e2;
+    margin-right: 15%;
+  }
+  .message.refuse {
+    background: #fde2e1;
+    border: 1px solid #f5b5b3;
+  }
+  .sources {
+    margin-top: 8px;
+    font-size: 0.8rem;
+    color: #555;
+  }
+  .sources ol {
+    margin: 4px 0 0;
+    padding-left: 18px;
+  }
+  form {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    gap: 8px;
+    padding: 16px;
+    background: #f7f7f8;
+    border-top: 1px solid #e2e2e2;
+  }
+  input[type="text"] {
+    flex: 1;
+    max-width: 728px;
+    margin: 0 auto;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 1rem;
+  }
+  button {
+    padding: 10px 18px;
+    border-radius: 8px;
+    border: none;
+    background: #2f5fd6;
+    color: white;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  button:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+</style>
+</head>
+<body>
+
+<h1>Assistant Code du travail</h1>
+<div class="avertissement">
+  Cet assistant ne fournit pas de conseil juridique. Consultez un avocat ou l'inspection du
+  travail pour votre situation personnelle.
+</div>
+
+<div id="conversation"></div>
+
+<form id="question-form">
+  <input type="text" id="question-input" placeholder="Posez votre question sur le Code du travail..." autocomplete="off">
+  <button type="submit" id="submit-button">Envoyer</button>
+</form>
+
+<script>
+const conversation = document.getElementById("conversation");
+const form = document.getElementById("question-form");
+const input = document.getElementById("question-input");
+const submitButton = document.getElementById("submit-button");
+
+function addMessage(role, text) {
+  const div = document.createElement("div");
+  div.className = "message " + role;
+  div.textContent = text;
+  conversation.appendChild(div);
+  window.scrollTo(0, document.body.scrollHeight);
+  return div;
+}
+
+function addSources(container, sources) {
+  if (!sources.length) return;
+  const sourcesDiv = document.createElement("div");
+  sourcesDiv.className = "sources";
+  const list = sources
+    .map((s) => `<li>Article <strong>${s.article}</strong> — ${s.theme}</li>`)
+    .join("");
+  sourcesDiv.innerHTML = "Sources :<ol>" + list + "</ol>";
+  container.appendChild(sourcesDiv);
+}
+
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const question = input.value.trim();
+  if (!question) return;
+
+  addMessage("user", question);
+  input.value = "";
+  submitButton.disabled = true;
+
+  const thinking = addMessage("assistant", "Recherche en cours...");
+
+  try {
+    const response = await fetch("/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question }),
+    });
+    const data = await response.json();
+
+    thinking.remove();
+    const role = data.refuse ? "assistant refuse" : "assistant";
+    const messageDiv = addMessage(role, data.response);
+    addSources(messageDiv, data.sources);
+  } catch (error) {
+    thinking.textContent = "Erreur de connexion au serveur.";
+  } finally {
+    submitButton.disabled = false;
+    input.focus();
+  }
+});
+</script>
+
+</body>
+</html>

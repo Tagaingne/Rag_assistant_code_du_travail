@@ -3,8 +3,12 @@
 # Prepare la question utilisateur pour la recherche vectorielle :
 # 1) enleve les mots parasites (bonjour, peux-tu...)
 # 2) decompose en sous-questions atomiques
-# 3) genere une reponse hypothetique par sous-question (HyDE), utilisee comme
-#    requete de recherche a la place de la question elle-meme
+# 3) pour chaque sous-question, cherche avec la sous-question elle-meme ET
+#    avec une reponse hypothetique (HyDE). HyDE reste volontairement vague sur
+#    les chiffres/faits precis (voir prompts/hyde_prompt_system.txt) : pour une
+#    question chiffree ("combien de jours ?"), ca peut l'eloigner de l'article
+#    qui donne le chiffre exact. Garder aussi la sous-question brute compense
+#    ce cas sans perdre le benefice de HyDE sur les questions plus conceptuelles.
 
 from src.decomposition_agent import DecompositionAgent
 from src.hyde_agent import HydeAgent
@@ -23,7 +27,8 @@ class QuestionFormatterAgent:
         return self._generate_search_queries(sous_questions)
 
     def _generate_search_queries(self, sous_questions: list[str]) -> list[str]:
-        return [
-            self.hyde_agent.generate_hypothetical_answer(sous_question)
-            for sous_question in sous_questions
-        ]
+        requetes = []
+        for sous_question in sous_questions:
+            requetes.append(sous_question)
+            requetes.append(self.hyde_agent.generate_hypothetical_answer(sous_question))
+        return requetes

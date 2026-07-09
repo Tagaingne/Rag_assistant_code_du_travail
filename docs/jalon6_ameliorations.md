@@ -11,7 +11,7 @@ Trois classes a responsabilite unique, composees par un orchestrateur, elles-mem
 - **`QuestionCleaner`** (`src/question_cleaner.py`) : nettoyage par regex, sans appel LLM (rapide, gratuit). Retire les formules de politesse et tournures ("bonjour", "pourriez-vous", "s'il vous plait"...) qui diluent le vecteur d'embedding sans apporter de signal juridique.
 - **`DecompositionAgent`** (`src/decomposition_agent.py`) : agent Groq (meme pattern que `ModeratorAgent`) qui decompose la question nettoyee en 2 a 4 sous-questions atomiques, sortie JSON forcee (`prompts/decomposition_prompt_system.txt`). Une question deja simple reste une unique sous-question (pas de decoupage force).
 - **`HydeAgent`** (`src/hyde_agent.py`) : agent Groq qui genere, pour chaque sous-question, un court paragraphe de reponse hypothetique dans le style du Code du travail (`prompts/hyde_prompt_system.txt`). Les chunks indexes sont des reponses (articles de loi), pas des questions : embedder une reponse hypothetique matche mieux qu'embedder la question brute.
-- **`QuestionFormatterAgent`** (`src/question_formatter_agent.py`) : orchestrateur qui enchaine les trois etapes (`clean` -> `decompose_question` -> `generate_hypothetical_answer` par sous-question) et renvoie la liste des requetes de recherche pretes a l'emploi.
+- **`QuestionFormatterAgent`** (`src/question_formatter_agent.py`) : orchestrateur qui enchaine `clean` -> `decompose_question`, puis pour chaque sous-question renvoie **deux** requetes de recherche : la sous-question elle-meme et sa reponse hypothetique HyDE (voir bug HyDE/chiffres ci-dessous pour pourquoi les deux sont gardees).
 
 `RagAgent.build_context` :
 1. appelle `QuestionFormatterAgent.format_question(question)` -> liste de requetes de recherche (une par sous-question, deja au format HyDE) ;
@@ -39,7 +39,17 @@ S'articule avec l'« historique de conversation », deja rendu quasi indispensab
 
 ### Cout
 
-Chaque question declenche maintenant jusqu'a : 1 moderation + 1 decomposition + 1 HyDE par sous-question (jusqu'a 4) + 1 generation finale = jusqu'a 7 appels LLM. Plus lent et plus couteux qu'un pipeline a un seul appel, mais chaque etape ameliore ce qui est cherche, pas seulement ce qui est genere (cf. cours, section 07).
+Chaque question declenche maintenant jusqu'a : 1 moderation + 1 decomposition + 1 HyDE par sous-question (jusqu'a 4) + 1 generation finale = jusqu'a 7 appels LLM (le doublement des requetes de recherche sous-question/HyDE ne coute rien de plus : c'est de l'embedding local, pas un appel Groq). Plus lent et plus couteux qu'un pipeline a un seul appel, mais chaque etape ameliore ce qui est cherche, pas seulement ce qui est genere (cf. cours, section 07).
+
+### Bugs trouves en test reel (interface FastAPI) et corriges
+
+Trois bugs decouverts en utilisant l'assistant dans le navigateur, invisibles dans les tests automatises precedents :
+
+1. **Sources non pertinentes sur les messages hors-question** (ex. « hello ») : HyDE genere un paragraphe juridique plausible meme pour une entree qui n'est pas une vraie question, ce qui remonte des chunks sans rapport et les affichait comme "sources" alors que la reponse ne les citait pas. **Corrige** : `RagAgent._keep_cited_sources` (extraction regex des numeros d'article dans la reponse, filtrage des sources affichees a celles reellement citees) — c'est le filet de securite anti-hallucination decrit dans la reponse Q2 du README, jamais implemente jusque-la.
+2. **Refus alors que l'information existe dans le corpus** (« combien de jours de conges par an ? ») : un article long redecoupe en plusieurs chunks (`L3141-24`) polluait le top-k d'une seule sous-question avec des doublons du meme article, evincant l'article pertinent (`L3141-3`) avant meme l'agregation entre sous-questions. **Corrige** : `Retriever.search` sur-echantillonne (`OVERSAMPLE_FACTOR = 3`) puis deduplique par article, garantissant top_k *articles distincts* et non top_k *chunks* (potentiellement du meme article).
+3. **HyDE peut degrader le retrieval sur les questions chiffrees** : le prompt HyDE interdit volontairement d'inventer des chiffres precis (bonne pratique anti-hallucination), donc pour une question du type « combien de jours ? » le paragraphe hypothetique reste vague et s'eloigne semantiquement de l'article qui donne le chiffre exact — alors que la question brute, elle, le retrouve directement (verifie : position 4/5, distance 0.27). **Corrige** : `QuestionFormatterAgent` cherche maintenant avec la sous-question brute *et* sa version HyDE, pas HyDE seul ; `RagAgent` deduplique et fusionne les deux jeux de resultats. Teste sur 3 executions repetees : 2/3 refus avant le fix, 3/3 reponses correctes apres.
+
+Aucun de ces bugs n'etait detecte par `evaluate_retrieval.py` (jalon 3), qui teste `Retriever.search` directement sans passer par la decomposition/HyDE — utile a savoir : valider le retrieval brut ne garantit pas que le pipeline complet (formatage de question + generation) se comporte bien en conditions reelles.
 
 ## Recherche hybride (evaluee, priorite revue apres le jalon 3)
 
