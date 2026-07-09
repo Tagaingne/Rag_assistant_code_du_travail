@@ -23,11 +23,18 @@ RUN pip install --no-cache-dir --timeout=180 --retries=10 -r requirements.txt
 
 Un `--timeout`/`--retries` plus généreux a aussi été ajouté par précaution (les gros paquets peuvent dépasser le timeout par défaut de pip sur une connexion modeste), mais la vraie cause était bien les paquets CUDA superflus, pas le réseau.
 
+## Deuxième bug trouvé : timeout d'attente trop court sur une vraie premiere installation
+
+Testé une deuxième fois sur une machine différente (premier `git clone`, aucun cache Docker ni modèle Hugging Face local) : `docker-start.sh` abandonnait après 180s (« Le serveur ne repond pas ») alors que le conteneur, lui, continuait de tourner en arrière-plan et a fini par démarrer correctement quelques minutes plus tard (téléchargement du modèle d'embedding `intfloat/multilingual-e5-base`, ~1 Go, sans `HF_TOKEN`, donc plus lent). Le conteneur n'était pas en échec, seul le script attendait trop peu.
+
+**Corrigé** : timeout du script porté de 180s à 20 minutes (`max_attempts=600`), avec un message de progression toutes les 60s pour ne pas donner l'impression que ça a planté.
+
 ## Vérification effectuée (build réel, pas juste la syntaxe)
 
-- `docker compose build` : succès après le fix (`EXIT_CODE: 0`).
+- `docker compose build` : succès après le fix CUDA (`EXIT_CODE: 0`).
 - `docker compose up -d` : démarrage propre, logs confirmant l'auto-indexation (`Base vectorielle absente : indexation initiale...` puis `Base vectorielle construite : 877 chunks indexes.`).
 - `curl http://localhost:8000/` : page de chat servie (HTTP 200).
 - `curl -X POST http://localhost:8000/ask` : réponse réelle avec citation d'article et vérification de fraîcheur Légifrance en direct (`"fraicheur": "à jour (vérifié en direct sur Légifrance)"`).
 - `docker compose restart` : redémarrage confirmé **sans réindexation** (aucune nouvelle occurrence de « Base vectorielle absente » dans les logs après le premier démarrage) — la base persiste bien dans le volume nommé `vector_store`.
 - Healthcheck Docker : statut `healthy` après le démarrage.
+- **Validé une deuxième fois sur une machine tierce (premier clone reel)** : build, auto-indexation (~7 minutes au premier lancement), interface FastAPI dans le navigateur testée avec deux vraies questions (« hello » → pas de source parasite, question juridique → 3 sources citées avec fraîcheur Légifrance confirmée en direct). C'est cette deuxième validation qui a revele le bug de timeout ci-dessus.
