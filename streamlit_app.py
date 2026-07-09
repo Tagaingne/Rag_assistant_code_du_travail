@@ -8,6 +8,7 @@ import streamlit as st
 
 from src.agent import MissingGroqApiKey
 from src.config import VECTOR_STORE_DIR
+from src.freshness_label import format_freshness_label
 from src.manager_agent import ManagerAgent, PromptInjectionDetected
 from src.vector_db import VectorDB
 
@@ -36,7 +37,11 @@ def render_sources(metadatas: list[dict]) -> None:
     for i, meta in enumerate(metadatas, start=1):
         article = meta.get("article", "Inconnu")
         theme = meta.get("theme", "")
-        st.markdown(f"{i}. Article **{article}** — {theme}")
+        ligne = f"{i}. Article **{article}** — {theme}"
+        fraicheur = format_freshness_label(meta)
+        if fraicheur:
+            ligne += f" _({fraicheur})_"
+        st.markdown(ligne)
 
 
 def render_history() -> None:

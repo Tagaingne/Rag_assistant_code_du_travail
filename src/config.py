@@ -10,6 +10,12 @@ load_dotenv()
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 
+# Optionnels : sans ces identifiants, la verification de fraicheur via
+# l'API Legifrance (jalon 6, agent recuperateur de reference) est desactivee
+# proprement plutot que de faire planter le pipeline.
+LEGIFRANCE_CLIENT_ID = os.environ.get("LEGIFRANCE_CLIENT_ID")
+LEGIFRANCE_CLIENT_SECRET = os.environ.get("LEGIFRANCE_CLIENT_SECRET")
+
 CORPUS_FILE = Path("data/processed/corpus_legi_clean.json")
 
 VECTOR_STORE_DIR = "data/vector_store"

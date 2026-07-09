@@ -10,4 +10,5 @@ class SearchResult:
     theme: str
     title: str
     text: str
+    legi_id: str
     distance: float

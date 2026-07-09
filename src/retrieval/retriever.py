@@ -63,5 +63,6 @@ class Retriever:
             theme=metadata["theme"],
             title=metadata["title"],
             text=text,
+            legi_id=metadata["legi_id"],
             distance=distance,
         )
