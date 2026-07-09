@@ -8,13 +8,13 @@ Le corpus du projet provient de la base LEGI disponible sur data.gouv.fr. Cette 
 
 Pour le jalon 1, l'option retenue est l'option B du sujet : utiliser les fichiers XML de la base LEGI et les parser avec la bibliotheque standard Python, notamment `xml.etree.ElementTree`.
 
-Les fichiers XML telecharges depuis la base LEGI doivent etre places dans le dossier suivant :
+Les fichiers XML utiles extraits depuis la base LEGI doivent etre places dans le dossier suivant :
 
 ```text
 data/raw/legi/
 ```
 
-Le projet ne telecharge pas automatiquement l'archive LEGI complete, car elle peut etre volumineuse. Il faut donc recuperer les fichiers utiles depuis data.gouv.fr, les extraire localement, puis les placer dans `data/raw/legi/` avant de lancer les scripts de preparation.
+Le projet ne telecharge pas automatiquement l'archive LEGI complete, car elle peut etre volumineuse. Si l'archive complete a deja ete telechargee, le script `src/data/extract_code_travail_from_archive.py` permet de la lire directement sans tout decompresser et d'extraire uniquement les XML utiles au jalon 1 dans `data/raw/legi/`.
 
 ## Jalon 1 - Preparation des donnees LEGI
 
@@ -36,11 +36,19 @@ data/processed/corpus_legi_clean.json
 
 ### Scripts disponibles
 
+`src/data/extract_code_travail_from_archive.py` lit une archive `.tar.gz` LEGI avec `tarfile`, parcourt les entrees sans extraction globale, repere les XML du Code du travail (`LEGITEXT000006072050`) et extrait seulement les articles des plages demandees dans `data/raw/legi/`.
+
 `src/data/explore_legi_xml.py` parcourt recursivement `data/raw/legi/`, lit les fichiers `.xml`, compte les balises rencontrees et affiche quelques exemples de texte. Il sert a comprendre la structure LEGI avant l'extraction.
 
 `src/data/extract_legi_corpus.py` parcourt recursivement `data/raw/legi/`, extrait les articles correspondant aux themes demandes du Code du travail, nettoie le texte et genere un JSON homogene.
 
 ### Commandes
+
+Extraire les XML utiles depuis l'archive complete sans tout decompresser :
+
+```bash
+python src/data/extract_code_travail_from_archive.py "C:/Users/33785/Downloads/Freemium_legi_global_20250713-140000.tar.gz"
+```
 
 Explorer les XML :
 
@@ -67,7 +75,7 @@ Le script filtre les articles par plages pour couvrir les themes du sujet :
 - Representation du personnel : `L2311-1` a `L2316-26`
 - Harcelement et discrimination : `L1152-1` a `L1155-2`
 
-La rupture conventionnelle est testee avant la plage plus large du licenciement afin de conserver ce theme specifique.
+Les plages specifiques sont testees avant la plage plus large du contrat de travail. La rupture conventionnelle est aussi testee avant la plage plus large du licenciement afin de conserver ce theme specifique.
 
 ### Champs du JSON final
 
@@ -102,8 +110,12 @@ Le script verifie :
 - affichage du nombre d'articles par theme ;
 - affichage de 5 exemples nettoyes.
 
+Sur l'archive `Freemium_legi_global_20250713-140000.tar.gz`, l'extraction ciblee a parcouru 5 253 903 entrees, analyse 41 815 XML du Code du travail et extrait 864 articles utiles. Le corpus propre genere contient 864 documents repartis sur 8 themes.
+
 ### Limites actuelles
 
-Le depot ne contient pas encore les fichiers XML LEGI. Tant que `data/raw/legi/` ne contient que `.gitkeep`, la generation de `data/processed/corpus_legi_clean.json` echoue volontairement avec un message clair.
+Les XML bruts dans `data/raw/legi/` restent ignores par Git afin d'eviter de versionner les donnees sources volumineuses. Le fichier propre `data/processed/corpus_legi_clean.json` est versionne car sa taille reste raisonnable.
+
+La lecture d'un `.tar.gz` est sequentielle : meme sans decompresser toute l'archive, le script doit parcourir les entrees de l'archive pour trouver les XML utiles.
 
 Le jalon 1 ne fait pas encore de chunking avance, pas d'embeddings, pas de base vectorielle, pas de recherche et pas d'appel LLM. LangChain et LlamaIndex ne sont pas utilises.
