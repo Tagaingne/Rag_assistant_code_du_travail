@@ -6,6 +6,7 @@ article number belongs to the project themes.
 """
 
 from collections import Counter
+from datetime import date
 from pathlib import Path
 import re
 import sys
@@ -189,6 +190,7 @@ def article_metadata_from_xml(xml_bytes: bytes) -> dict:
         return {}
 
     return {
+        "legi_id": text_of_first(root, "ID"),
         "article": article_number,
         "etat": text_of_first(root, "ETAT").upper(),
         "date_debut": text_of_first(root, "DATE_DEBUT"),
@@ -196,17 +198,44 @@ def article_metadata_from_xml(xml_bytes: bytes) -> dict:
     }
 
 
+def parse_iso_date(value: str) -> date | None:
+    """Parse a LEGI ISO date, returning None when it is missing or invalid."""
+    if not value:
+        return None
+
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def is_current_version(metadata: dict, reference_date: date) -> bool:
+    """Return True only for versions legally in force at reference_date."""
+    if metadata.get("etat") != "VIGUEUR":
+        return False
+
+    date_debut = parse_iso_date(metadata.get("date_debut", ""))
+    date_fin = parse_iso_date(metadata.get("date_fin", ""))
+
+    if date_debut is None or date_debut > reference_date:
+        return False
+
+    if date_fin is not None and date_fin <= reference_date:
+        return False
+
+    return True
+
+
 def version_score(metadata: dict) -> tuple:
     """Rank article versions, prioritizing current legal text."""
-    etat = metadata.get("etat", "")
-    date_debut = metadata.get("date_debut", "")
-    date_fin = metadata.get("date_fin", "")
+    date_debut = parse_iso_date(metadata.get("date_debut", "")) or date.min
+    date_fin = parse_iso_date(metadata.get("date_fin", "")) or date.max
 
     return (
-        1 if etat == "VIGUEUR" else 0,
-        1 if date_fin == "2999-01-01" else 0,
         date_debut,
+        1 if metadata.get("date_fin") == "2999-01-01" else 0,
         date_fin,
+        metadata.get("legi_id", ""),
     )
 
 
@@ -240,6 +269,22 @@ def should_skip_member(member: tarfile.TarInfo) -> bool:
     return False
 
 
+def clear_existing_xml_files() -> int:
+    """Remove stale XML files from the target raw directory."""
+    output_dir = OUTPUT_DIR.resolve()
+    removed_count = 0
+
+    for old_xml in OUTPUT_DIR.rglob("*.xml"):
+        resolved_xml = old_xml.resolve()
+        if output_dir not in resolved_xml.parents:
+            raise RuntimeError(f"Chemin XML inattendu hors dossier cible: {old_xml}")
+
+        old_xml.unlink()
+        removed_count += 1
+
+    return removed_count
+
+
 def extract_target_xml_files(archive_path: Path) -> None:
     """Extract required Code du travail article XML files from a tar.gz archive."""
     if not archive_path.exists():
@@ -250,9 +295,11 @@ def extract_target_xml_files(archive_path: Path) -> None:
     files_seen = 0
     xml_seen = 0
     xml_parsed = 0
+    ignored_non_current = 0
     best_articles = {}
     theme_counts = Counter()
     extracted_files = []
+    reference_date = date.today()
 
     print(f"Archive: {archive_path}", flush=True)
     print("Lecture sequentielle de l'archive, sans extraction complete.", flush=True)
@@ -299,6 +346,10 @@ def extract_target_xml_files(archive_path: Path) -> None:
             if not metadata:
                 continue
 
+            if not is_current_version(metadata, reference_date):
+                ignored_non_current += 1
+                continue
+
             candidate = {
                 "member_name": member.name,
                 "xml_bytes": xml_bytes,
@@ -311,8 +362,7 @@ def extract_target_xml_files(archive_path: Path) -> None:
             if previous is None or candidate["score"] > previous["score"]:
                 best_articles[article_number] = candidate
 
-    for old_xml in OUTPUT_DIR.glob("*.xml"):
-        old_xml.unlink()
+    removed_count = clear_existing_xml_files()
 
     for article_number, candidate in sorted(best_articles.items()):
         theme_counts[candidate["theme"]] += 1
@@ -332,6 +382,8 @@ def extract_target_xml_files(archive_path: Path) -> None:
         f"Nombre d'articles du Code du travail trouves: {len(best_articles)}",
         flush=True,
     )
+    print(f"Versions non en vigueur ignorees: {ignored_non_current}", flush=True)
+    print(f"Anciens XML supprimes de {OUTPUT_DIR}: {removed_count}", flush=True)
     print(
         f"Nombre de fichiers extraits dans {OUTPUT_DIR}: {len(extracted_files)}",
         flush=True,

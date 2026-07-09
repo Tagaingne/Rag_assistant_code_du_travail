@@ -20,6 +20,7 @@ LABOR_CODE_TITLE = "code du travail"
 ARTICLE_REF_PATTERN = re.compile(r"^([A-Z]+)([0-9]+(?:-[0-9]+)+)$")
 MIN_REQUIRED_THEME_COUNT = 5
 EXAMPLE_COUNT = 5
+OPEN_ENDED_DATE = "2999-01-01"
 
 
 # Specific ranges are checked before the broader contract range.
@@ -108,6 +109,17 @@ def texts_by_tag(root: ET.Element, tag_name: str) -> list[str]:
     return values
 
 
+def parse_iso_date(value: str) -> date | None:
+    """Parse a LEGI ISO date, returning None when it is missing or invalid."""
+    if not value:
+        return None
+
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        return None
+
+
 def normalize_article_number(value: str) -> str:
     """Normalize article references such as 'Article L3121-1'."""
     value = clean_text(value).upper()
@@ -162,6 +174,81 @@ def article_in_range(article_number: str, start: str, end: str) -> bool:
     return start_numbers <= article_numbers <= end_numbers
 
 
+def extract_last_modification_date(root: ET.Element, fallback_date: str) -> tuple[str, str]:
+    """Extract the latest explicit modification date, with a transparent fallback."""
+    modification_dates = []
+
+    for element in root.iter():
+        if local_name(element.tag) != "LIEN":
+            continue
+
+        link_type = element.attrib.get("typelien", "").upper()
+        link_date = element.attrib.get("datesignatexte", "")
+        if link_type not in {"MODIFIE", "MODIFICATION"}:
+            continue
+
+        parsed_date = parse_iso_date(link_date)
+        if parsed_date is None or link_date == OPEN_ENDED_DATE:
+            continue
+
+        modification_dates.append(link_date)
+
+    if modification_dates:
+        return max(modification_dates), "LIEN typelien=MODIFIE"
+
+    return fallback_date, "DATE_DEBUT"
+
+
+def extract_legal_metadata(root: ET.Element) -> dict:
+    """Extract legal version metadata from a LEGI article XML."""
+    date_debut = text_of_first(root, "DATE_DEBUT")
+    date_derniere_modification, modification_source = extract_last_modification_date(
+        root,
+        date_debut,
+    )
+
+    return {
+        "legi_id": text_of_first(root, "ID"),
+        "etat": text_of_first(root, "ETAT").upper(),
+        "date_debut": date_debut,
+        "date_fin": text_of_first(root, "DATE_FIN"),
+        "date_derniere_modification": date_derniere_modification,
+        "date_derniere_modification_source": modification_source,
+    }
+
+
+def is_current_document(document: dict, reference_date: date) -> bool:
+    """Return True only for the article version in force at reference_date."""
+    if document.get("etat") != "VIGUEUR":
+        return False
+
+    date_debut = parse_iso_date(document.get("date_debut", ""))
+    date_fin = parse_iso_date(document.get("date_fin", ""))
+
+    if date_debut is None or date_debut > reference_date:
+        return False
+
+    if date_fin is not None and date_fin <= reference_date:
+        return False
+
+    return True
+
+
+def version_score(document: dict) -> tuple:
+    """Rank current article versions so the newest one wins."""
+    date_debut = parse_iso_date(document.get("date_debut", "")) or date.min
+    date_fin = parse_iso_date(document.get("date_fin", "")) or date.max
+    source_depth = len(Path(document.get("source_file", "")).parts)
+
+    return (
+        date_debut,
+        1 if document.get("date_fin") == OPEN_ENDED_DATE else 0,
+        date_fin,
+        document.get("legi_id", ""),
+        -source_depth,
+    )
+
+
 def theme_for_article(article_number: str) -> str | None:
     """Map an article number to one of the required project themes."""
     for theme_range in THEME_RANGES:
@@ -198,12 +285,23 @@ def extract_article_text(root: ET.Element) -> str:
     return ""
 
 
-def build_content(article_number: str, theme: str, title: str, text: str) -> str:
+def build_content(
+    article_number: str,
+    theme: str,
+    title: str,
+    text: str,
+    metadata: dict,
+) -> str:
     """Build the text that will later be embedded by the RAG pipeline."""
     return (
         f"Article {article_number}\n"
         f"Theme : {theme}\n"
         f"Titre : {title}\n"
+        f"Etat juridique : {metadata['etat']}\n"
+        f"Date d'entree en vigueur : {metadata['date_debut']}\n"
+        f"Date de fin de validite : {metadata['date_fin']}\n"
+        f"Date de derniere modification : "
+        f"{metadata['date_derniere_modification']}\n"
         f"Texte : {text}"
     )
 
@@ -232,6 +330,7 @@ def extract_document(xml_path: Path, extraction_date: str) -> dict | None:
         return None
 
     title = extract_title(root, article_number)
+    metadata = extract_legal_metadata(root)
 
     return {
         "id": stable_id(article_number),
@@ -239,7 +338,15 @@ def extract_document(xml_path: Path, extraction_date: str) -> dict | None:
         "theme": theme,
         "title": title,
         "text": text,
-        "content": build_content(article_number, theme, title, text),
+        "content": build_content(article_number, theme, title, text, metadata),
+        "legi_id": metadata["legi_id"],
+        "etat": metadata["etat"],
+        "date_debut": metadata["date_debut"],
+        "date_fin": metadata["date_fin"],
+        "date_derniere_modification": metadata["date_derniere_modification"],
+        "date_derniere_modification_source": metadata[
+            "date_derniere_modification_source"
+        ],
         "source": SOURCE_LABEL,
         "source_file": xml_path.as_posix(),
         "date_extraction": extraction_date,
@@ -251,7 +358,7 @@ def iter_xml_files(root_dir: Path):
     yield from sorted(root_dir.rglob("*.xml"))
 
 
-def extract_documents() -> list[dict]:
+def extract_documents() -> tuple[list[dict], Counter]:
     """Extract all usable Labor Code article documents."""
     if not RAW_LEGI_DIR.exists():
         raise FileNotFoundError(
@@ -266,15 +373,37 @@ def extract_documents() -> list[dict]:
             "Placez les fichiers XML LEGI dans data/raw/legi/."
         )
 
-    extraction_date = date.today().isoformat()
-    documents = []
+    reference_date = date.today()
+    extraction_date = reference_date.isoformat()
+    best_documents = {}
+    stats = Counter()
 
     for xml_path in xml_files:
+        stats["xml_files_seen"] += 1
         document = extract_document(xml_path, extraction_date)
         if document is not None:
-            documents.append(document)
+            stats["candidate_documents"] += 1
 
-    return documents
+            if not is_current_document(document, reference_date):
+                stats["ignored_non_current_versions"] += 1
+                continue
+
+            article_number = document["article"]
+            previous = best_documents.get(article_number)
+            if previous is None or version_score(document) > version_score(previous):
+                if previous is not None:
+                    stats["replaced_current_versions"] += 1
+                best_documents[article_number] = document
+            else:
+                stats["ignored_older_current_versions"] += 1
+
+    documents = [
+        best_documents[article_number]
+        for article_number in sorted(best_documents)
+    ]
+    stats["kept_current_documents"] = len(documents)
+
+    return documents, stats
 
 
 def write_documents(documents: list[dict], output_file: Path) -> None:
@@ -295,6 +424,13 @@ def validate_documents(documents: list[dict]) -> None:
     empty_id_count = sum(1 for document in documents if not document.get("id"))
     empty_article_count = sum(1 for document in documents if not document.get("article"))
     empty_text_count = sum(1 for document in documents if not document.get("text"))
+    empty_etat_count = sum(1 for document in documents if not document.get("etat"))
+    empty_date_debut_count = sum(
+        1 for document in documents if not document.get("date_debut")
+    )
+    empty_date_fin_count = sum(
+        1 for document in documents if not document.get("date_fin")
+    )
 
     if empty_id_count:
         errors.append(f"{empty_id_count} document(s) ont un id vide.")
@@ -302,6 +438,24 @@ def validate_documents(documents: list[dict]) -> None:
         errors.append(f"{empty_article_count} document(s) ont un article vide.")
     if empty_text_count:
         errors.append(f"{empty_text_count} document(s) ont un texte vide.")
+    if empty_etat_count:
+        errors.append(f"{empty_etat_count} document(s) ont un etat vide.")
+    if empty_date_debut_count:
+        errors.append(f"{empty_date_debut_count} document(s) ont une date_debut vide.")
+    if empty_date_fin_count:
+        errors.append(f"{empty_date_fin_count} document(s) ont une date_fin vide.")
+
+    non_current_articles = [
+        document["article"]
+        for document in documents
+        if not is_current_document(document, date.today())
+    ]
+    if non_current_articles:
+        preview = ", ".join(sorted(non_current_articles)[:10])
+        errors.append(
+            "Versions non en vigueur detectees dans le corpus final: "
+            f"{preview}."
+        )
 
     article_counts = Counter(document["article"] for document in documents)
     duplicate_articles = [
@@ -326,11 +480,21 @@ def validate_documents(documents: list[dict]) -> None:
         raise ValueError("Controle qualite echoue:\n- " + "\n- ".join(errors))
 
 
-def print_quality_summary(documents: list[dict]) -> None:
+def print_quality_summary(documents: list[dict], stats: Counter) -> None:
     """Print corpus statistics and cleaned examples."""
     theme_counts = Counter(document["theme"] for document in documents)
 
     print(f"Nombre total d'articles: {len(documents)}")
+    print(f"Fichiers XML parcourus: {stats['xml_files_seen']}")
+    print(f"Versions candidates dans les themes: {stats['candidate_documents']}")
+    print(
+        "Versions non en vigueur ignorees: "
+        f"{stats['ignored_non_current_versions']}"
+    )
+    print(
+        "Versions courantes en doublon ignorees: "
+        f"{stats['ignored_older_current_versions']}"
+    )
     print("\nNombre d'articles par theme")
     print("-" * 80)
     for theme, count in sorted(theme_counts.items()):
@@ -347,18 +511,25 @@ def print_quality_summary(documents: list[dict]) -> None:
         print(f"Article: {document['article']}")
         print(f"Theme: {document['theme']}")
         print(f"Titre: {document['title']}")
+        print(f"Etat: {document['etat']}")
+        print(f"Date debut: {document['date_debut']}")
+        print(f"Date fin: {document['date_fin']}")
+        print(
+            "Date derniere modification: "
+            f"{document['date_derniere_modification']}"
+        )
         print(f"Texte: {text_preview}")
         print("-" * 80)
 
 
 def main() -> None:
     try:
-        documents = extract_documents()
+        documents, stats = extract_documents()
         validate_documents(documents)
     except (FileNotFoundError, ValueError) as error:
         raise SystemExit(f"Erreur: {error}") from error
 
-    print_quality_summary(documents)
+    print_quality_summary(documents, stats)
     write_documents(documents, OUTPUT_FILE)
     print(f"Fichier genere: {OUTPUT_FILE}")
 
