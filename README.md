@@ -98,6 +98,7 @@ cp .env.example .env  # puis renseigner GROQ_API_KEY, si pas deja fait
 | `v1.2.0` | Interfaces Streamlit/FastAPI, corrections de retrieval (dédup par article, sources filtrées aux citations réelles), agent récupérateur de référence (API Légifrance) | [docs/legifrance_reference_retriever.md](docs/legifrance_reference_retriever.md) |
 | `v1.2.1` | Ajout du compte rendu d'une page | [COMPTE_RENDU.md](COMPTE_RENDU.md) |
 | `v1.3.0` | Setup Docker/MLOps validé de bout en bout, correction du retrieval pour les questions multi-sujets (interleaving équitable entre sous-questions), gestion d'erreur API gracieuse, veille technologique au-delà du RAG | [docs/docker_setup.md](docs/docker_setup.md), [docs/jalon6_ameliorations.md](docs/jalon6_ameliorations.md), [docs/veille_au_dela_rag/veille_au_dela_du_rag.md](docs/veille_au_dela_rag/veille_au_dela_du_rag.md) |
+| `v1.3.1` | Mise à jour de la documentation (table Versions à jour, liens vers le compte rendu et la veille technologique, compte rendu actualisé) | [COMPTE_RENDU.md](COMPTE_RENDU.md) |
 
 Tous les tags sont posés sur `main`. Chaque montée de version a été validée avec de vrais appels API (Groq, et Légifrance à partir de `v1.2.0`) avant d'être taggée — voir le détail dans les docs liées.
 
