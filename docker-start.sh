@@ -17,13 +17,16 @@ echo "Construction et demarrage du conteneur..."
 echo "(premier demarrage : telechargement du modele d'embedding + indexation, quelques minutes)"
 docker compose up --build -d
 
-max_attempts=90
+max_attempts=600
 attempt=0
 until curl -sf "$URL" >/dev/null 2>&1; do
     attempt=$((attempt + 1))
     if [ "$attempt" -ge "$max_attempts" ]; then
         echo "Le serveur ne repond pas apres $((max_attempts * 2))s. Verifiez les logs : docker compose logs -f"
         exit 1
+    fi
+    if [ $((attempt % 30)) -eq 0 ]; then
+        echo "Toujours en attente... ($((attempt * 2))s ecoulees, le telechargement du modele d'embedding peut prendre du temps sur une premiere execution)"
     fi
     sleep 2
 done
